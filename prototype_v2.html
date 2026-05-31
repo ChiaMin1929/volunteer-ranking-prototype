@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分科推薦排序 — 原型 v2（五星標示）</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.26.0/dist/tabler-icons.min.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  :root {
+    --brand: #D85A30; --brand-light: #FAECE7; --brand-border: #F0997B; --brand-text: #993C1D;
+    --ai-bg: #EEEDFE; --ai-border: #AFA9EC; --ai-dark: #3C3489; --ai-mid: #534AB7;
+    --dream-bg: #EEEDFE; --dream-text: #3C3489;
+    --reach-bg: #FAEEDA; --reach-text: #854F0B;
+    --standard-bg: #E6F1FB; --standard-text: #0C447C;
+    --safe-bg: #EAF3DE; --safe-text: #3B6D11;
+    --t1-bg: #EEEDFE; --t1-txt: #3C3489; --t1-bd: #AFA9EC;
+    --t2-bg: #E1F5EE; --t2-txt: #085041; --t2-bd: #5DCAA5;
+    --t3-bg: #E6F1FB; --t3-txt: #0C447C; --t3-bd: #85B7EB;
+    --t4-bg: #FAEEDA; --t4-txt: #633806; --t4-bd: #EF9F27;
+    --t5-bg: #F1EFE8; --t5-txt: #5F5E5A; --t5-bd: #B4B2A9;
+    --danger-bg: #FCEBEB; --danger-bd: #F09595; --danger-txt: #A32D2D;
+    --warn-bg: #FAEEDA; --warn-txt: #854F0B;
+    --info-bg: #E6F1FB; --info-txt: #0C447C;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; }
+  #root { display: flex; justify-content: center; min-height: 100vh; }
+  .app-shell {
+    width: 100%; max-width: 430px; min-height: 100vh;
+    background: #fff; position: relative; overflow-x: hidden;
+  }
+  @media (min-width: 480px) {
+    body { background: #e8e8e8; }
+    #root { padding: 0; }
+    .app-shell { box-shadow: 0 0 40px rgba(0,0,0,.15); }
+  }
+  .navbar {
+    background: #fff; border-bottom: 1px solid #eee;
+    padding: 0 16px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .navbar-logo { display: flex; align-items: center; gap: 6px; }
+  .navbar-logo span { font-weight: 700; font-size: 15px; color: #333; }
+  .navbar-logo em { color: var(--brand); font-style: normal; }
+  .btn-primary {
+    background: var(--brand); color: #fff; border: none;
+    padding: 8px 16px; border-radius: 10px; font-size: 14px;
+    font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  }
+  .btn-outline {
+    background: #fff; color: var(--brand); border: 1.5px solid var(--brand);
+    padding: 7px 14px; border-radius: 10px; font-size: 14px;
+    font-weight: 600; cursor: pointer;
+  }
+  .btn-ghost {
+    background: none; border: none; cursor: pointer;
+    color: #666; font-size: 14px; display: flex; align-items: center; gap: 4px;
+  }
+  .page-header {
+    padding: 14px 16px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .page-title { font-size: 16px; font-weight: 700; color: #222; }
+  .page-subtitle { font-size: 12px; color: #888; margin-top: 2px; }
+  .card {
+    border: 0.5px solid #e0e0e0; border-radius: 12px;
+    padding: 12px 14px; background: #fff; margin: 0 16px 10px;
+  }
+  .school-name { font-weight: 700; font-size: 15px; color: #222; margin-bottom: 2px; }
+  .dept-name { font-size: 14px; color: var(--brand); font-weight: 500; }
+  .dept-meta { font-size: 12px; color: #999; margin-top: 3px; }
+  .chance-badge {
+    display: inline-flex; align-items: center;
+    padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    margin-right: 6px;
+  }
+  .chance-bar {
+    display: flex; align-items: center; gap: 3px; margin-bottom: 8px;
+  }
+  .bar-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .rate-text { font-size: 12px; color: #555; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
+    border: 0.5px solid;
+  }
+  .tag-hot { background: var(--brand-light); color: var(--brand-text); border-color: var(--brand-border); }
+  .heart-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 20px; color: #ccc; padding: 4px; line-height: 1;
+  }
+  .heart-btn.active { color: var(--brand); }
+  .detail-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 12px; color: #888; display: flex; align-items: center; gap: 2px;
+  }
+  .hook-banner {
+    margin: 0 16px 10px; border-radius: 12px;
+    background: var(--brand-light); border: 0.5px solid var(--brand-border);
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .hook-text h4 { font-size: 14px; font-weight: 700; color: #333; margin-bottom: 3px; }
+  .hook-text p { font-size: 12px; color: #666; }
+  .hook-cta {
+    background: var(--brand); color: #fff; border: none;
+    padding: 8px 14px; border-radius: 10px; font-size: 13px;
+    font-weight: 600; cursor: pointer; white-space: nowrap; margin-left: 12px;
+  }
+  .float-btn {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    z-index: 200; width: calc(min(430px, 100vw) - 32px);
+    background: var(--brand); color: #fff; border: none;
+    padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 20px rgba(216,90,48,.4);
+  }
+  .tab-bar {
+    display: flex; overflow-x: auto; border-bottom: 1px solid #eee;
+    padding: 0 16px; gap: 4px; scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-item {
+    flex-shrink: 0; padding: 12px 16px; font-size: 14px; font-weight: 500;
+    color: #888; cursor: pointer; border-bottom: 2.5px solid transparent;
+    white-space: nowrap; transition: all .15s;
+  }
+  .tab-item.active { color: var(--brand); border-bottom-color: var(--brand); font-weight: 700; }
+  .hint-bar {
+    background: #f8f8f8; padding: 8px 16px;
+    font-size: 12px; color: #999; display: flex; align-items: center; gap: 6px;
+  }
+  .section-label { font-size: 12px; color: #888; padding: 8px 16px 4px; }
+  .wish-card {
+    border: 0.5px solid #e8e8e8; border-radius: 12px;
+    padding: 12px 14px; background: #fff; margin: 0 16px 8px;
+  }
+  .wish-card-top { display: flex; align-items: flex-start; gap: 10px; }
+  .seq-circle {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; margin-top: 2px;
+  }
+  .grip-icon { color: #ccc; font-size: 18px; cursor: grab; padding: 2px; }
+  .combo-entry-card {
+    margin: 0 16px 12px; border-radius: 12px;
+    background: var(--ai-bg); border: 0.5px solid var(--ai-border);
+    padding: 14px 16px; display: flex; align-items: center;
+    cursor: pointer; gap: 12px;
+  }
+  .combo-entry-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: rgba(83,74,183,.15); display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .combo-entry-text h4 { font-size: 14px; font-weight: 700; color: var(--ai-dark); }
+  .combo-entry-text p { font-size: 11px; color: var(--ai-mid); margin-top: 2px; line-height: 1.4; }
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 300;
+  }
+  .bottom-sheet {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: min(430px, 100vw); max-height: 92vh;
+    background: #fff; border-radius: 20px 20px 0 0;
+    z-index: 301; display: flex; flex-direction: column;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(100%); } to { transform: translateX(-50%) translateY(0); } }
+  .sheet-handle { width: 36px; height: 4px; background: #ddd; border-radius: 4px; margin: 12px auto 0; flex-shrink: 0; }
+  .sheet-header {
+    padding: 14px 16px 12px; border-bottom: 1px solid #f0f0f0; flex-shrink: 0;
+  }
+  .sheet-title { font-size: 16px; font-weight: 700; color: #222; }
+  .sheet-subtitle { font-size: 12px; color: #888; margin-top: 3px; }
+  .sheet-body { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
+  .sheet-footer { padding: 12px 16px 20px; border-top: 1px solid #f0f0f0; flex-shrink: 0; }
+  .dir-card {
+    border: 1.5px solid #eee; border-radius: 12px;
+    padding: 14px; margin-bottom: 10px; cursor: pointer;
+    display: flex; align-items: center; gap: 12px; transition: all .15s;
+  }
+  .dir-card.selected { border-color: var(--ai-border); background: var(--ai-bg); }
+  .dir-card.disabled { opacity: .45; cursor: not-allowed; }
+  .dir-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .dir-label { font-size: 14px; color: #333; line-height: 1.4; flex: 1; }
+  .check-circle {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid #ddd; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 11px;
+    transition: all .15s;
+  }
+  .check-circle.on { background: var(--ai-mid); border-color: var(--ai-mid); color: #fff; }
+  .ind-card {
+    border: 1.5px solid #eee; border-radius: 12px;
+    padding: 12px; margin-bottom: 8px; cursor: pointer;
+    display: flex; align-items: center; gap: 10px; transition: all .15s;
+  }
+  .ind-card.selected { border-color: var(--ai-border); }
+  .ind-card.disabled-card { opacity: .4; cursor: not-allowed; }
+  .ind-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  .ind-text { flex: 1; }
+  .ind-name { font-size: 14px; font-weight: 600; color: #222; }
+  .ind-desc { font-size: 11px; color: #888; margin-top: 2px; line-height: 1.4; }
+  .matched-badge { background: var(--ai-bg); color: var(--ai-mid); border: none; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; margin-left: 6px; }
+  .step3-item {
+    border: 1.5px solid #e8e8e8; border-radius: 12px;
+    padding: 13px 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 10px;
+    background: #fff; cursor: grab; transition: opacity .15s;
+  }
+  .step3-item.dragging { opacity: .4; }
+  .step3-item.drag-over { border-color: var(--ai-border); background: var(--ai-bg); }
+  .priority-label { font-size: 11px; color: #888; margin-top: 2px; }
+  .preview-card {
+    border: 0.5px solid #e8e8e8; border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 10px;
+  }
+  .preview-card.no-data { border-style: dashed; }
+  .preview-card-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  /* v2: 雙欄星等格線 */
+  .tier-tags {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px 6px; margin-top: 10px; padding: 10px 12px;
+    background: #f9f9f9; border-radius: 8px; border: 0.5px solid #eee;
+  }
+  .tier-tag {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 6px; background: transparent; border: none; padding: 0;
+    white-space: nowrap;
+  }
+  .tier-tag .tag-label {
+    font-size: 11px; font-weight: 500; color: #444;
+  }
+  .tier-tag .tag-stars {
+    font-size: 13px; letter-spacing: 1.5px; line-height: 1; color: #F5C518;
+  }
+  .tier-tag .tag-stars .star-empty {
+    color: #ddd;
+  }
+  .no-data-warn {
+    background: var(--warn-bg); border-radius: 8px; padding: 8px 10px;
+    font-size: 11px; color: var(--warn-txt); margin-top: 8px; line-height: 1.5;
+  }
+  .back-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 13px; color: #666; display: flex; align-items: center; gap: 4px;
+    padding: 0; margin-bottom: 4px;
+  }
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 48px 24px; text-align: center;
+  }
+  .empty-state i { font-size: 40px; color: #ccc; margin-bottom: 14px; }
+  .empty-state h3 { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 6px; }
+  .empty-state p { font-size: 12px; color: #999; line-height: 1.6; }
+  .progress-dots { display: flex; gap: 5px; }
+  .progress-dots span {
+    width: 6px; height: 6px; border-radius: 50%; background: #ddd;
+  }
+  .progress-dots span.on { background: var(--ai-mid); }
+  .add-combo-btn {
+    margin: 4px 16px 24px; border: 1.5px dashed #ddd; border-radius: 12px;
+    padding: 14px; text-align: center; cursor: pointer; color: #888;
+    font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .remove-badge {
+    font-size: 11px; color: #999; background: #f5f5f5;
+    border: 0.5px solid #e0e0e0; border-radius: 20px; padding: 2px 8px;
+    cursor: pointer; margin-left: auto;
+  }
+  .remove-badge:hover { background: var(--danger-bg); color: var(--danger-txt); border-color: var(--danger-bd); }
+  .info-strip {
+    background: var(--info-bg); border-radius: 8px; padding: 10px 12px;
+    font-size: 12px; color: var(--info-txt); margin-bottom: 12px;
+    display: flex; gap: 8px; align-items: flex-start; line-height: 1.5;
+  }
+  .confirm-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 400;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .confirm-modal {
+    width: min(430px, 100vw); background: #fff; border-radius: 20px 20px 0 0;
+    padding: 24px 20px 32px; animation: slideUp .2s ease;
+  }
+  .confirm-modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .confirm-modal p { font-size: 13px; color: #666; line-height: 1.6; margin-bottom: 20px; }
+  .badge-count {
+    background: var(--brand); color: #fff;
+    font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 20px; margin-left: 6px;
+  }
+  .page-body { padding-bottom: 96px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef } = React;
+
+// ─── MOCK DATA ─────────────────────────────────────────────────────────────────
+const SCHOOLS = [
+  { id:'ntu-law',  name:'國立臺灣大學', dept:'政治學系公共行政組', code:'0024', city:'台北市', cluster:'法政學群', interests:'E企業・S社會・A藝術', chance:'dream',    rate:1,     popular:true,  hasBrand:true,
+    pr:{job:92,future:88,hire:90,char:85,fame:99,acad:97,indus:70,rd:88,intl:82,salary:78,leader:90,sustain:85} },
+  { id:'ntu-bio',  name:'國立臺灣大學', dept:'生物產業傳播暨發展學系', code:'0057', city:'台北市', cluster:'大眾傳播學群', interests:'A藝術・S社會・E企業', chance:'safe', rate:90.84, popular:false, hasBrand:true,
+    pr:{job:80,future:78,hire:75,char:82,fame:95,acad:90,indus:65,rd:72,intl:70,salary:65,leader:80,sustain:78} },
+  { id:'ncku-tr',  name:'國立成功大學', dept:'交通管理科學系', code:'0256', city:'台南市', cluster:'工程學群', interests:'C事務・E企業・R實作', chance:'safe', rate:81.2, popular:true, hasBrand:true,
+    pr:{job:82,future:80,hire:78,char:75,fame:88,acad:82,indus:85,rd:80,intl:65,salary:82,leader:75,sustain:72} },
+  { id:'ntu-cs',   name:'國立臺灣大學', dept:'資訊工程學系', code:'0006', city:'台北市', cluster:'電資學群', interests:'R實作・I研究・E企業', chance:'dream', rate:5, popular:true, hasBrand:true,
+    pr:{job:95,future:96,hire:97,char:88,fame:99,acad:99,indus:92,rd:98,intl:88,salary:99,leader:92,sustain:88} },
+  { id:'nccu-nw',  name:'國立政治大學', dept:'新聞學系', code:'0103', city:'台北市', cluster:'大眾傳播學群', interests:'A藝術・S社會・C事務', chance:'standard', rate:62.5, popular:false, hasBrand:true,
+    pr:{job:82,future:80,hire:78,char:85,fame:92,acad:85,indus:68,rd:70,intl:75,salary:72,leader:82,sustain:75} },
+  { id:'nthu-ee',  name:'國立清華大學', dept:'電機工程學系', code:'0189', city:'新竹市', cluster:'電資學群', interests:'R實作・I研究', chance:'reach', rate:30, popular:true, hasBrand:true,
+    pr:{job:90,future:92,hire:88,char:82,fame:92,acad:93,indus:88,rd:93,intl:80,salary:92,leader:88,sustain:82} },
+  { id:'ncu-cs',   name:'國立中央大學', dept:'資訊工程學系', code:'0315', city:'桃園市', cluster:'電資學群', interests:'R實作・I研究', chance:'standard', rate:58, popular:false, hasBrand:true,
+    pr:{job:75,future:78,hire:72,char:70,fame:78,acad:75,indus:75,rd:80,intl:65,salary:80,leader:65,sustain:68} },
+  { id:'fju-soc',  name:'輔仁大學', dept:'社會學系', code:'0428', city:'新北市', cluster:'社會與心理學群', interests:'S社會・I研究', chance:'safe', rate:88.6, popular:false, hasBrand:false,
+    pr:{job:null,future:null,hire:null,char:null,fame:null,acad:null,indus:null,rd:null,intl:null,salary:null,leader:null,sustain:null} },
+  // 部分指標無資料的校系範例（hasBrand:true，但 hire / intl / rd 無資料）
+  { id:'ntust-im', name:'國立臺灣科技大學', dept:'工業管理系', code:'0347', city:'台北市', cluster:'工程學群', interests:'C事務・E企業・R實作', chance:'standard', rate:65, popular:false, hasBrand:true,
+    pr:{job:78, future:72, hire:null, char:68, fame:82, acad:70, indus:80, rd:null, intl:null, salary:75, leader:null, sustain:null} },
+];
+
+const CHANCE_LABEL = { dream:'超級夢幻', reach:'有點挑戰', standard:'標準落點', safe:'安全保底' };
+const CHANCE_STYLE = {
+  dream:    { bg:'var(--dream-bg)',    color:'var(--dream-text)',    dots:['#AFA9EC','#ddd','#ddd','#ddd'] },
+  reach:    { bg:'var(--reach-bg)',    color:'var(--reach-text)',    dots:['#EF9F27','#EF9F27','#ddd','#ddd'] },
+  standard: { bg:'var(--standard-bg)',color:'var(--standard-text)', dots:['#85B7EB','#85B7EB','#85B7EB','#ddd'] },
+  safe:     { bg:'var(--safe-bg)',     color:'var(--safe-text)',     dots:['#74C76A','#74C76A','#74C76A','#74C76A'] },
+};
+
+const DIRECTIONS = [
+  { id:'work',     label:'希望畢業後容易找到工作',               icon:'ti-briefcase',          bg:'#E6F1FB', ic:'#0C447C', inds:['job','hire'] },
+  { id:'salary',   label:'希望畢業後起薪不輸人',                 icon:'ti-coin',               bg:'#FAEEDA', ic:'#633806', inds:['salary'] },
+  { id:'fame',     label:'希望就讀名聲好的學校',                 icon:'ti-star',               bg:'#FAEEDA', ic:'#633806', inds:['fame','acad'] },
+  { id:'industry', label:'希望在學時能接觸業界、累積實務經驗',   icon:'ti-building-factory-2', bg:'#E1F5EE', ic:'#085041', inds:['indus','rd'] },
+  { id:'research', label:'希望學校重視研究，能接軌未來讀研究所', icon:'ti-flask',              bg:'#E6F1FB', ic:'#0C447C', inds:['rd','acad'] },
+  { id:'intl',     label:'希望有出國交換、接觸國際環境的機會', icon:'ti-world',              bg:'#FAEEDA', ic:'#633806', inds:['intl'] },
+  { id:'soft',     label:'希望培養職場所需的軟實力',           icon:'ti-mood-happy',         bg:'#FBEAF0', ic:'#72243E', inds:['job','char','future'] },
+];
+
+const INDICATORS = [
+  { key:'hire',   label:'學群聘僱力', desc:'企業聘雇特定學群的畢業生，會優先任用哪所學校',                         icon:'ti-users',              bg:'#E1F5EE', ic:'#085041' },
+  { key:'salary', label:'學群薪資力', desc:'相同學群畢業生的第一份正職工作，哪所學校的薪水高',                     icon:'ti-coin',               bg:'#FAEEDA', ic:'#633806' },
+  { key:'intl',   label:'國際力',     desc:'出國交換名額、外籍師資、全英語課程的綜合表現',                         icon:'ti-world',              bg:'#FAEEDA', ic:'#633806' },
+  { key:'job',    label:'職務能力',   desc:'企業最在乎的職場基本功，如主動積極、溝通協調、團隊合作等',             icon:'ti-briefcase',          bg:'#E6F1FB', ic:'#0C447C' },
+  { key:'future', label:'未來能力',   desc:'未知的時代，企業最希望學生具備的能力，如社會智力、持續學習等',         icon:'ti-rocket',             bg:'#EEEDFE', ic:'#3C3489' },
+  { key:'fame',   label:'知名度',     desc:'不需要提示，企業主管第一時間會想到哪些學校',                           icon:'ti-star',               bg:'#FAEEDA', ic:'#633806' },
+  { key:'acad',   label:'學術聲望',   desc:'QS、THE、CWUR 三大國際排名的學術聲望平均分數',                        icon:'ti-school',             bg:'#EEEDFE', ic:'#3C3489' },
+  { key:'indus',  label:'產學力',     desc:'學校與企業合作的深度，分數越高代表產業資源多',                         icon:'ti-building-factory-2', bg:'#E1F5EE', ic:'#085041' },
+  { key:'rd',     label:'研發力',     desc:'學校申請專利、承接研究計畫的能量，走研究所路線的重要參考',             icon:'ti-flask',              bg:'#E6F1FB', ic:'#0C447C' },
+  { key:'char',   label:'性格優勢',   desc:'企業最在乎的個性特質，如負責任、合作性、抗壓性',                       icon:'ti-mood-happy',         bg:'#FBEAF0', ic:'#72243E' },
+  { key:'leader', label:'高階領導力', desc:'校友中擔任大公司高階主管（如總經理、副總等）的比例',                   icon:'ti-crown',              bg:'#FBEAF0', ic:'#72243E', last:true },
+];
+
+// ─── HELPERS ───────────────────────────────────────────────────────────────────
+const PRIORITY_TEXT = ['最重要','第二重要','第三重要','也在意','也在意'];
+const WEIGHTS = [5,4,3,2,1];
+const RANK_COLORS = [
+  { bg:'#534AB7', fg:'#fff' },
+  { bg:'#7F77DD', fg:'#fff' },
+  { bg:'#AFA9EC', fg:'#fff' },
+];
+
+function calcScore(school, ordered) {
+  return ordered.reduce((sum, key, i) => {
+    const pr = school.pr[key];
+    return sum + (pr !== null && pr !== undefined ? pr : 50) * (WEIGHTS[i] || 1);
+  }, 0);
+}
+
+function getTier(pr) {
+  if (pr === null || pr === undefined) return 0;
+  if (pr >= 95) return 1; if (pr >= 85) return 2; if (pr >= 70) return 3;
+  if (pr >= 40) return 4; return 5;
+}
+
+// v2: star count per tier (tier 0 = no data, no stars)
+const TIER_STARS = [0, 5, 4, 3, 2, 1];
+
+const TIER_LABEL = ['資料未收錄','頂尖','非常突出','突出','中上','中等'];
+const TIER_VAR   = [
+  { bg:'#f1efe8',color:'#888',border:'#ccc' },
+  { bg:'var(--t1-bg)',color:'var(--t1-txt)',border:'var(--t1-bd)' },
+  { bg:'var(--t2-bg)',color:'var(--t2-txt)',border:'var(--t2-bd)' },
+  { bg:'var(--t3-bg)',color:'var(--t3-txt)',border:'var(--t3-bd)' },
+  { bg:'var(--t4-bg)',color:'var(--t4-txt)',border:'var(--t4-bd)' },
+  { bg:'var(--t5-bg)',color:'var(--t5-txt)',border:'var(--t5-bd)' },
+];
+
+function getPreviewResults(schoolIds, orderedInds) {
+  const list = schoolIds.map(id => SCHOOLS.find(s => s.id === id)).filter(Boolean);
+  const withData    = list.filter(s => s.hasBrand).sort((a,b) => calcScore(b, orderedInds) - calcScore(a, orderedInds));
+  const withoutData = list.filter(s => !s.hasBrand);
+  return [...withData, ...withoutData];
+}
+
+function getAutoIndicators(dirs) {
+  const keys = new Set();
+  dirs.forEach(d => {
+    const dir = DIRECTIONS.find(x => x.id === d);
+    if (dir) dir.inds.forEach(k => keys.add(k));
+  });
+  return [...keys];
+}
+
+// ─── BUCKET SCORING ────────────────────────────────────────────────────────────
+const BUCKET_WEIGHTS = { best:50, second:30, ref:20 };
+
+function calcScoreFromBuckets(school, buckets) {
+  let score = 0;
+  Object.entries(BUCKET_WEIGHTS).forEach(([bId, bW]) => {
+    const keys = buckets[bId] || [];
+    if (!keys.length) return;
+    const perKey = bW / keys.length;
+    keys.forEach(key => {
+      const pr = school.pr[key];
+      score += (pr != null ? pr : 50) * perKey;
+    });
+  });
+  return score;
+}
+
+function getPreviewResultsByBuckets(schoolIds, buckets) {
+  const list = schoolIds.map(id => SCHOOLS.find(s => s.id === id)).filter(Boolean);
+  const withData    = list.filter(s => s.hasBrand)
+    .sort((a, b) => calcScoreFromBuckets(b, buckets) - calcScoreFromBuckets(a, buckets));
+  const withoutData = list.filter(s => !s.hasBrand);
+  return [...withData, ...withoutData];
+}
+
+// ─── SMALL COMPONENTS ─────────────────────────────────────────────────────────
+function ChanceBadge({ chance }) {
+  const s = CHANCE_STYLE[chance];
+  return <span className="chance-badge" style={{ background:s.bg, color:s.color }}>{CHANCE_LABEL[chance]}</span>;
+}
+
+function ChanceBar({ chance }) {
+  const dots = CHANCE_STYLE[chance].dots;
+  return (
+    <div className="chance-bar">
+      <ChanceBadge chance={chance} />
+      {dots.map((c,i) => <span key={i} className="bar-dot" style={{ background:c }} />)}
+    </div>
+  );
+}
+
+function SeqCircle({ n, style }) {
+  const col = n <= 3 ? RANK_COLORS[n-1] : { bg:'#eee', fg:'#888' };
+  return (
+    <div className="seq-circle" style={{ background:col.bg, color:col.fg, ...style }}>
+      {n}
+    </div>
+  );
+}
+
+// v2: TierTag — uses star rating instead of text level label
+function StarDisplay({ count, color }) {
+  const filled = '★'.repeat(count);
+  const empty  = '☆'.repeat(5 - count);
+  return (
+    <span className="tag-stars">
+      {filled}
+      {empty && <span className="star-empty">{empty}</span>}
+    </span>
+  );
+}
+
+function HalfStar() {
+  return (
+    <span style={{ display:'inline-block', overflow:'hidden', width:'0.55em', color:'#F5C518', lineHeight:1, verticalAlign:'middle' }}>★</span>
+  );
+}
+
+function TierTag({ indKey, pr }) {
+  const tier = getTier(pr);
+  const ind = INDICATORS.find(x => x.key === indKey);
+  const stars = TIER_STARS[tier];
+  return (
+    <span className="tier-tag">
+      <span className="tag-label">{ind?.label}</span>
+      <span className="tag-stars">
+        {tier === 0
+          ? <HalfStar />
+          : <>
+              {'★'.repeat(stars)}
+              {5 - stars > 0 && <span className="star-empty">{'☆'.repeat(5 - stars)}</span>}
+            </>
+        }
+      </span>
+    </span>
+  );
+}
+
+// ─── RESULTS PAGE ─────────────────────────────────────────────────────────────
+function ResultsPage({ wishlist, onToggleWish, onOpenFlow, onGoWishlist }) {
+  const [removeTarget, setRemoveTarget] = useState(null);
+
+  function handleHeart(school) {
+    if (wishlist.includes(school.id)) setRemoveTarget(school);
+    else onToggleWish(school.id, 'add');
+  }
+
+  return (
+    <div className="page-body">
+      <div className="page-header">
+        <div>
+          <div className="page-title">分科 — 落點分析列表</div>
+          <div className="page-subtitle">共 {SCHOOLS.length} 筆｜依錄取機率排序</div>
+        </div>
+        <button className="btn-primary" onClick={onGoWishlist}>
+          <i className="ti ti-heart" />
+          我的志願
+          {wishlist.length > 0 && <span className="badge-count">{wishlist.length}</span>}
+        </button>
+      </div>
+
+      {SCHOOLS.map((s, i) => (
+        <React.Fragment key={s.id}>
+          <div className="card">
+            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:6 }}>
+              <ChanceBar chance={s.chance} />
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                <span className="rate-text">錄取機率 <b>{s.rate}%</b></span>
+                <button
+                  className={`heart-btn ${wishlist.includes(s.id)?'active':''}`}
+                  onClick={() => handleHeart(s)}
+                  title={wishlist.length >= 100 && !wishlist.includes(s.id) ? '已達100個志願上限' : ''}
+                  disabled={wishlist.length >= 100 && !wishlist.includes(s.id)}
+                >
+                  <i className={wishlist.includes(s.id)?'ti ti-heart-filled':'ti ti-heart'} />
+                </button>
+              </div>
+            </div>
+            <div className="school-name">{s.name}</div>
+            <div className="dept-name">{s.dept}（{s.code}）</div>
+            <div className="dept-meta">{s.city}｜{s.cluster}｜{s.interests}</div>
+            <div style={{ display:'flex', justifyContent:'flex-end', marginTop:6 }}>
+              <button className="detail-btn">看動態詳情 <i className="ti ti-chevron-right" /></button>
+            </div>
+          </div>
+          {/* 第 10 筆後顯示品牌力預覽版位（prototype 以最後一筆示意） */}
+          {i === SCHOOLS.length - 1 && (
+            <div style={{ margin:'0 16px 12px', borderRadius:12, background:'linear-gradient(135deg,#FAECE7 0%,#F5EEFF 100%)', border:'0.5px solid var(--brand-border)', padding:'16px 16px 14px' }}>
+              <div style={{ fontSize:14, fontWeight:700, color:'#222', lineHeight:1.5, marginBottom:12 }}>
+                把校系加入志願，就可以看到學校五星指標
+              </div>
+
+              {/* 示意卡片 */}
+              <div style={{ background:'#fff', borderRadius:10, padding:'12px 13px', border:'0.5px solid #e8e8e8', marginBottom:12 }}>
+                {/* 學校名稱與科系模糊處理 */}
+                <div style={{ filter:'blur(4px)', userSelect:'none', pointerEvents:'none', marginBottom:8 }}>
+                  <div className="school-name">國立臺灣大學</div>
+                  <div className="dept-name">資訊工程學系</div>
+                </div>
+                {/* 指標星等（清晰顯示） */}
+                <div className="tier-tags">
+                  {[
+                    { key:'fame',   pr:75 },
+                    { key:'intl',   pr:87 },
+                    { key:'indus',  pr:75 },
+                    { key:'job',    pr:87 },
+                    { key:'salary', pr:96 },
+                    { key:'hire',   pr:87 },
+                  ].map(({ key, pr }) => <TierTag key={key} indKey={key} pr={pr} />)}
+                </div>
+              </div>
+
+              <button style={{
+                width:'100%', background:'var(--brand)', color:'#fff', border:'none',
+                borderRadius:10, padding:'11px', fontSize:14, fontWeight:700,
+                cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                boxShadow:'0 3px 12px rgba(216,90,48,.3)',
+              }}>
+                <i className="ti ti-lock-open" style={{ fontSize:15 }} />
+                登入解鎖
+              </button>
+            </div>
+          )}
+        </React.Fragment>
+      ))}
+
+      <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)', width:'calc(min(430px, 100vw) - 32px)', display:'flex', gap:10, zIndex:200 }}>
+        <button
+          style={{ flex:1, background:'#fff', color:'#555', border:'1.5px solid #ccc', borderRadius:12, padding:'13px 10px', fontSize:14, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 12px rgba(0,0,0,.1)' }}>
+          修改成績
+        </button>
+        <button onClick={onGoWishlist}
+          style={{ flex:1, background:'var(--brand)', color:'#fff', border:'none', borderRadius:12, padding:'13px 10px', fontSize:14, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(216,90,48,.4)' }}>
+          登入排志願
+        </button>
+      </div>
+
+      {removeTarget && (
+        <div className="confirm-modal-overlay" onClick={() => setRemoveTarget(null)}>
+          <div className="confirm-modal" onClick={e => e.stopPropagation()}>
+            <h3>移除此志願？</h3>
+            <p>「{removeTarget.name} {removeTarget.dept}」將從你的志願清單中移除，相關組合也會同步更新。</p>
+            <div style={{ display:'flex', gap:10 }}>
+              <button className="btn-outline" style={{ flex:1 }} onClick={() => setRemoveTarget(null)}>取消</button>
+              <button className="btn-primary" style={{ flex:1, background:'#C0392B', justifyContent:'center' }}
+                onClick={() => { onToggleWish(removeTarget.id, 'remove'); setRemoveTarget(null); }}>
+                確認移除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── WISHLIST CARD ─────────────────────────────────────────────────────────────
+function WishlistCard({ school, index, showRemove, onRemove, appliedInds = [], dragHandlers = {} }) {
+  const { draggable, onDragStart, onDragOver, onDragEnd, isDragging, isDragOver } = dragHandlers;
+  const cardStyle = {
+    ...(!school.hasBrand ? { borderStyle:'dashed' } : {}),
+    ...(isDragging  ? { opacity:0.4, cursor:'grabbing' } : {}),
+    ...(isDragOver  ? { borderColor:'var(--ai-border)', background:'var(--ai-bg)' } : {}),
+  };
+  return (
+    <div className="wish-card" style={cardStyle}
+      draggable={!!draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragEnd={onDragEnd}>
+      {/* Top row: chance badge + rate + heart */}
+      <div style={{ display:'flex', alignItems:'center', marginBottom:10 }}>
+        <ChanceBar chance={school.chance} />
+        <span className="rate-text" style={{ marginLeft:6 }}>錄取機率 <b>{school.rate}%</b></span>
+        <div style={{ flex:1 }} />
+        {showRemove ? (
+          <button onClick={onRemove}
+            style={{ background:'none', border:'none', cursor:'pointer', color:'#bbb', fontSize:18, padding:'2px 4px', lineHeight:1, display:'flex', alignItems:'center', transition:'color .15s' }}
+            onMouseEnter={e => e.currentTarget.style.color='#C0392B'}
+            onMouseLeave={e => e.currentTarget.style.color='#bbb'}>
+            <i className="ti ti-trash" />
+          </button>
+        ) : (
+          <button className="heart-btn active">
+            <i className="ti ti-heart-filled" />
+          </button>
+        )}
+      </div>
+      {/* Number + grip on left, school info on right */}
+      <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', width:22, flexShrink:0, paddingTop:2 }}>
+          {index !== null
+            ? <span style={{ fontSize:20, fontWeight:800, color:'#333', lineHeight:1 }}>{index + 1}</span>
+            : <span style={{ fontSize:14, color:'#ccc', lineHeight:1 }}>—</span>
+          }
+          {index !== null && <i className="ti ti-grip-vertical" style={{ color:'#ccc', fontSize:16, marginTop:5 }} />}
+        </div>
+        <div style={{ flex:1 }}>
+          <div className="school-name">{school.name}</div>
+          <div className="dept-name">{school.dept}（{school.code}）</div>
+          <div style={{ display:'flex', justifyContent:'flex-end', marginTop:8 }}>
+            <button className="detail-btn">看動態詳情 <i className="ti ti-chevron-down" /></button>
+          </div>
+        </div>
+      </div>
+      {/* Indicator tier tags — shown after recommendation applied */}
+      {appliedInds.length > 0 && (
+        <div style={{ marginTop:10, paddingTop:10, borderTop:'1px solid #f2f2f2' }}>
+          {school.hasBrand ? (
+            <div className="tier-tags">
+              {appliedInds.map(key => <TierTag key={key} indKey={key} pr={school.pr[key]} />)}
+            </div>
+          ) : (
+            <div style={{ fontSize:11, color:'#999', display:'flex', alignItems:'center', gap:5 }}>
+              <i className="ti ti-info-circle" /> 此校系尚無相關指標的資料，不列入指標排序，建議另行參考學校官方資訊。
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ALL TAB ───────────────────────────────────────────────────────────────────
+function AllTab({ wishlist, onCreateCombo, allInds, onGoResults }) {
+  const schools = wishlist.map(id => SCHOOLS.find(s => s.id === id)).filter(Boolean);
+
+  if (!schools.length) return (
+    <div className="empty-state">
+      <i className="ti ti-heart" />
+      <h3>{allInds.length > 0 ? '加入志願就可幫你排志願囉' : '還沒有加入任何志願'}</h3>
+      <p>回到落點結果，點擊校系卡片右上角的 ♡<br/>加入志願，再來這裡排序。</p>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="combo-entry-card" onClick={onCreateCombo} style={{ margin:'12px 16px 4px' }}>
+        <div className="combo-entry-icon">
+          <i className="ti ti-sparkles" style={{ color:'var(--ai-mid)', fontSize:20 }} />
+        </div>
+        <div className="combo-entry-text" style={{ flex:1 }}>
+          <h4 style={{ lineHeight:1.55 }}>有幾個猶豫的校系不知道怎麼排序？<br/>幫我排志願</h4>
+        </div>
+        <i className="ti ti-chevron-right" style={{ color:'var(--ai-mid)', fontSize:18 }} />
+      </div>
+      <div style={{ display:'flex', gap:8, padding:'8px 16px 4px' }}>
+        <button style={{
+          flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+          background:'#fff', border:'1.5px solid var(--brand)', color:'var(--brand)',
+          borderRadius:10, padding:'9px 10px', fontSize:13, fontWeight:600, cursor:'pointer',
+        }}>
+          <i className="ti ti-qrcode" style={{ fontSize:15 }} />
+          產生志願碼
+        </button>
+        <button style={{
+          flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+          background:'#fff', border:'1.5px solid #888', color:'#555',
+          borderRadius:10, padding:'9px 10px', fontSize:13, fontWeight:600, cursor:'pointer',
+        }}>
+          <i className="ti ti-file-spreadsheet" style={{ fontSize:15 }} />
+          下載 Excel
+        </button>
+      </div>
+      <div className="hint-bar"><i className="ti ti-hand-move" style={{ fontSize:14 }} /> 長按可拖拉調整順序</div>
+      <div className="section-label">依加入時間排序，共 {schools.length} 個志願</div>
+      {schools.map((s, i) => (
+        <React.Fragment key={s.id}>
+          <WishlistCard school={s} index={i} appliedInds={allInds} />
+          {i === 4 && (
+            <div style={{ margin:'2px 16px 10px', background:'var(--warn-bg)', border:'0.5px solid #EF9F27', borderRadius:10, padding:'10px 13px', display:'flex', alignItems:'center', gap:10 }}>
+              <i className="ti ti-alert-triangle" style={{ color:'var(--warn-txt)', fontSize:15, flexShrink:0 }} />
+              <span style={{ fontSize:12, color:'var(--warn-txt)', lineHeight:1.55, flex:1 }}>
+                建議至少填 10 個安全保底志願，增加上榜機會
+              </span>
+              <button onClick={onGoResults}
+                style={{ flexShrink:0, background:'none', border:'1px solid var(--brand)', color:'var(--brand)', borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+                去落點頁加志願
+              </button>
+            </div>
+          )}
+        </React.Fragment>
+      ))}
+      <div style={{ height:16 }} />
+    </>
+  );
+}
+
+// ─── COMBO TAB ─────────────────────────────────────────────────────────────────
+const IND_DESC = {
+  hire:   '若聘僱限定學群，企業會優先聘僱哪些學校畢業生。',
+  salary: '2021-2025最高學歷大學畢業，依學群排序第一份正職工作月薪中位數。',
+  intl:   '依教育部「大專校院校務資訊公開平台」揭露的外籍專任教師數/專任教師數，出國交流學生數/學生數，跨國學位合作學校數，海外學術合作件數，學校開設全外國語授課之院/系所/學位學程數。採5項平均。',
+  job:    '哪些學校畢業生最符合企業聘僱新鮮人最在乎的11項職能。',
+  future: '哪些學校畢業生最符合企業聘僱新鮮人最應具備的14項未來能力。',
+  fame:   '不提示的情況下，企業最先想到哪些學校。',
+  acad:   '依QS世界大學排名、THE泰晤士高等教育世界大學排名、CWUR世界大學排名中心公開揭露各大學學術聲望排名。採3項平均。',
+  indus:  '依教育部「大專校院校務資訊公開平台」揭露的學校承接產學合作計畫經費及每師平均承接金額，學校衍生企業，學校合作企業新事業部門。採3項平均。',
+  rd:     '依教育部「大專校院校務資訊公開平台」揭露的學校申請美國等地專利/新品種/授權件數，智慧財產權衍生運用總金額，專任教師獲資助學術研究計畫經費及每師平均承接金額。採3項平均。',
+  char:   '哪些學校畢業生最符合企業聘僱新鮮人最在乎的27項性格。',
+  leader: '各校求職會員「最高學歷大學畢業」曾任員工人數100人以上大型企業、或上市櫃公司的高階主管(例如：總經理、執行長、財務長、技術長、副總、廠長)，占該校求職會員的比例。',
+};
+
+function IndicatorInfoSheet({ onClose }) {
+  return (
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="bottom-sheet">
+        <div className="sheet-handle" />
+        <div className="sheet-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div className="sheet-title">指標說明</div>
+          <button className="btn-ghost" onClick={onClose} style={{ fontSize:20, color:'#aaa', padding:0 }}>
+            <i className="ti ti-x" />
+          </button>
+        </div>
+        <div className="sheet-body" style={{ paddingTop:12 }}>
+
+          {/* 概述 */}
+          <p style={{ fontSize:13, color:'#444', lineHeight:1.7, marginBottom:14 }}>
+            以十一大指標：學群聘僱力、學群薪資力、國際力、職務能力、未來能力、知名度、學術聲望、產學力、研發力、性格優勢、高階領導力，衡量國內超過 120 所大學的《大學品牌力》。
+          </p>
+
+          {/* 資料來源 */}
+          <div style={{ background:'#f8f8f8', borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'#555', marginBottom:6 }}>資料來源</div>
+            <p style={{ fontSize:12, color:'#666', lineHeight:1.7 }}>
+              104 人力銀行資料庫、徵才企業問卷、教育部大專院校務資訊公開網站、QS、THE、CWUR 世界大學評比公開資訊。
+            </p>
+          </div>
+
+          {/* 排名方式 */}
+          <div style={{ background:'#f8f8f8', borderRadius:10, padding:'12px 14px', marginBottom:18 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'#555', marginBottom:6 }}>排名方式</div>
+            <p style={{ fontSize:12, color:'#666', lineHeight:1.7 }}>
+              各指標依原始值由高而低排序，依常態分布採五等級配分。從你選擇的指標及排序加權後計分（若無排序則不另加權），加權總分愈高、排名愈前。
+            </p>
+            <p style={{ fontSize:12, color:'#444', lineHeight:1.7, marginTop:6, fontWeight:700 }}>
+              此排序是以「大學品牌力」的角度供參考，實際選填志願序仍需考量個人興趣與錄取機率喔！
+            </p>
+          </div>
+
+          {/* 各指標說明 */}
+          <div style={{ fontSize:13, fontWeight:700, color:'#222', marginBottom:12 }}>各指標說明</div>
+          {INDICATORS.map(ind => (
+            <div key={ind.key} style={{ display:'flex', gap:10, marginBottom:14, alignItems:'flex-start' }}>
+              <div style={{ width:32, height:32, borderRadius:8, background:ind.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, marginTop:1 }}>
+                <i className={`ti ${ind.icon}`} style={{ color:ind.ic, fontSize:16 }} />
+              </div>
+              <div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#222', marginBottom:3 }}>{ind.label}</div>
+                <div style={{ fontSize:12, color:'#666', lineHeight:1.65 }}>{IND_DESC[ind.key]}</div>
+              </div>
+            </div>
+          ))}
+
+          {/* 外部連結 */}
+          <div style={{ background:'var(--info-bg)', borderRadius:10, padding:'12px 14px', marginTop:4, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <span style={{ fontSize:12, color:'#555' }}>更多完整說明，請參考</span>
+            <a href="#" style={{ fontSize:13, fontWeight:700, color:'#0C447C', textDecoration:'none', display:'flex', alignItems:'center', gap:4 }}>
+              2025 大學品牌力 <i className="ti ti-external-link" style={{ fontSize:13 }} />
+            </a>
+          </div>
+          <div style={{ height:8 }} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ComboTab({ combo, wishlist, onOpenFlow, onAddSchool, onRemoveFromCombo, onRestoreOrder, onReorderCombo, onSyncToAll, actionsRef, initialPicking, defaultInds }) {
+  const [picking, setPicking] = useState(!!initialPicking);
+  const [pickSelected, setPickSelected] = useState([]);
+  const [showIndInfo, setShowIndInfo] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null);
+
+  if (actionsRef) {
+    actionsRef.current = {
+      openPicker: () => { setPickSelected([]); setPicking(true); },
+    };
+  }
+  const [localOrder, setLocalOrder] = useState(null);
+  const [dragIdx, setDragIdx] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
+
+  const available = wishlist.filter(id => !combo.schools.includes(id));
+  const rec = combo.recommendedOrder || [];
+  const isDrifted = rec.length > 0 && JSON.stringify(combo.schools) !== JSON.stringify(rec);
+  const appliedInds = (combo.appliedInds && combo.appliedInds.length > 0) ? combo.appliedInds : (defaultInds || []);
+
+  const rawIds = localOrder || combo.schools;
+  // 無品牌力資料的校系固定排在最下方
+  const hasBrandIds    = rawIds.filter(id => SCHOOLS.find(s => s.id === id)?.hasBrand);
+  const nonHasBrandIds = rawIds.filter(id => !SCHOOLS.find(s => s.id === id)?.hasBrand);
+  const sortedIds = [...hasBrandIds, ...nonHasBrandIds];
+  const schools = sortedIds.map(id => SCHOOLS.find(s => s.id === id)).filter(Boolean);
+  const hasBrandCount = hasBrandIds.length;
+
+  function handleDragStart(e, idx) {
+    setLocalOrder([...sortedIds]);
+    setDragIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragOver(e, idx) {
+    e.preventDefault();
+    setDragOver(idx);
+    // 僅允許在有品牌力資料的校系間拖拉
+    if (dragIdx === null || dragIdx === idx || idx >= hasBrandCount || dragIdx >= hasBrandCount) return;
+    setLocalOrder(prev => {
+      const cur = prev || sortedIds;
+      const arr = [...cur];
+      const [removed] = arr.splice(dragIdx, 1);
+      arr.splice(idx, 0, removed);
+      return arr;
+    });
+    setDragIdx(idx);
+  }
+
+  function handleDragEnd() {
+    if (localOrder) onReorderCombo(combo.id, localOrder);
+    setLocalOrder(null);
+    setDragIdx(null);
+    setDragOver(null);
+  }
+
+  return (
+    <>
+      {/* Entry card — only shown before first recommendation applied */}
+      {appliedInds.length === 0 && (
+        <div className="combo-entry-card" onClick={() => onOpenFlow('apply', combo.id)}>
+          <div className="combo-entry-icon">
+            <i className="ti ti-sparkles" style={{ color:'var(--ai-mid)', fontSize:20 }} />
+          </div>
+          <div className="combo-entry-text" style={{ flex:1 }}>
+            <h4>調整排序條件</h4>
+            <p>用我在意的學校條件，自動排出適合我的志願順序</p>
+          </div>
+          <i className="ti ti-chevron-right" style={{ color:'var(--ai-mid)', fontSize:18 }} />
+        </div>
+      )}
+
+      {/* CTA button — shown after recommendation applied */}
+      {appliedInds.length > 0 && (
+        <div style={{ padding:'4px 16px 0' }}>
+          <button onClick={() => onOpenFlow('apply', combo.id)}
+            style={{ display:'flex', alignItems:'center', gap:5, background:'var(--ai-mid)', color:'#fff', border:'none',
+              borderRadius:20, padding:'7px 14px', fontSize:12, fontWeight:600, cursor:'pointer' }}>
+            <i className="ti ti-sparkles" style={{ fontSize:13 }} />
+            調整排序條件
+          </button>
+        </div>
+      )}
+
+      {schools.length === 0 ? (
+        <div className="empty-state" style={{ padding:'24px' }}>
+          <i className="ti ti-playlist-x" />
+          <h3>此組合還沒有志願</h3>
+          <p>從全部志願新增，或刪除此組合</p>
+        </div>
+      ) : (
+        <>
+          {/* Info text — below CTA, above list */}
+          {appliedInds.length > 0 && (
+            <div style={{ padding:'10px 16px 4px' }}>
+              <div style={{ fontSize:12, color:'#aaa', lineHeight:1.55, marginBottom:4 }}>
+                已用你在意的條件幫你排序，請再自行考量錄取機會與就讀意願，拖拉調整排序。
+              </div>
+              <button onClick={() => setShowIndInfo(true)}
+                style={{ background:'none', border:'none', color:'#bbb', fontSize:11, cursor:'pointer', padding:0, textDecoration:'underline', display:'flex', alignItems:'center', gap:3 }}>
+                排序依據 <i className="ti ti-help-circle" style={{ fontSize:12 }} />
+              </button>
+            </div>
+          )}
+          {schools.map((s,i) => (
+            <WishlistCard key={s.id} school={s}
+              index={s.hasBrand ? i : null}
+              showRemove
+              appliedInds={appliedInds}
+              onRemove={() => setRemoveTarget(s)}
+              dragHandlers={s.hasBrand ? {
+                draggable: true,
+                onDragStart: e => handleDragStart(e, i),
+                onDragOver:  e => handleDragOver(e, i),
+                onDragEnd:   handleDragEnd,
+                isDragging:  dragIdx === i,
+                isDragOver:  dragOver === i && dragIdx !== i,
+              } : {}} />
+          ))}
+        </>
+      )}
+
+      <div style={{ height:80 }} />
+
+      {picking && (
+        <>
+          <div className="overlay" onClick={() => setPicking(false)} />
+          <div className="bottom-sheet">
+            <div className="sheet-handle" />
+            <div className="sheet-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div>
+                <div className="sheet-title">選擇要新增的志願</div>
+                <div className="sheet-subtitle">
+                  {available.length === 0 ? '全部志願已在此組合中' : `可從 ${available.length} 個志願中選擇，已選 ${pickSelected.length} 個`}
+                </div>
+              </div>
+              <button className="btn-ghost" onClick={() => setPicking(false)} style={{ fontSize:20, color:'#aaa', padding:0 }}>
+                <i className="ti ti-x" />
+              </button>
+            </div>
+            <div className="sheet-body" style={{ paddingTop:8 }}>
+              {available.length === 0 ? (
+                <div style={{ textAlign:'center', padding:'24px 0', color:'#aaa', fontSize:13 }}>全部志願已在此組合中</div>
+              ) : (
+                available.map(id => {
+                  const s = SCHOOLS.find(x => x.id === id);
+                  if (!s) return null;
+                  const sel = pickSelected.includes(id);
+                  return (
+                    <div key={id}
+                      onClick={() => setPickSelected(prev => sel ? prev.filter(x => x !== id) : [...prev, id])}
+                      style={{
+                        display:'flex', alignItems:'center', gap:12,
+                        padding:'11px 4px', borderBottom:'1px solid #f5f5f5',
+                        cursor:'pointer', transition:'background .1s',
+                      }}>
+                      <div style={{
+                        width:20, height:20, borderRadius:5, flexShrink:0,
+                        border:`2px solid ${sel ? 'var(--ai-mid)' : '#ccc'}`,
+                        background: sel ? 'var(--ai-mid)' : '#fff',
+                        display:'flex', alignItems:'center', justifyContent:'center',
+                        transition:'all .15s',
+                      }}>
+                        {sel && <i className="ti ti-check" style={{ fontSize:11, color:'#fff' }} />}
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:600, color:'#222' }}>{s.name}</div>
+                        <div style={{ fontSize:12, color:'var(--brand)', marginTop:1 }}>{s.dept}</div>
+                        <div style={{ fontSize:11, color:'#999', marginTop:1 }}>
+                          <ChanceBadge chance={s.chance} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="sheet-footer" style={{ display:'flex', gap:10 }}>
+              <button className="btn-outline" style={{ flex:1 }} onClick={() => setPicking(false)}>取消</button>
+              <button className="btn-primary"
+                style={{ flex:2, justifyContent:'center', opacity: pickSelected.length === 0 ? 0.45 : 1 }}
+                disabled={pickSelected.length === 0}
+                onClick={() => {
+                  pickSelected.forEach(id => onAddSchool(combo.id, id));
+                  setPickSelected([]);
+                  setPicking(false);
+                }}>
+                加入 {pickSelected.length > 0 ? `${pickSelected.length} 個` : ''}志願
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {showIndInfo && <IndicatorInfoSheet onClose={() => setShowIndInfo(false)} />}
+
+      {removeTarget && (
+        <div className="confirm-modal-overlay" onClick={() => setRemoveTarget(null)}>
+          <div className="confirm-modal" onClick={e => e.stopPropagation()}>
+            <h3>從組合移除？</h3>
+            <p>「{removeTarget.name} {removeTarget.dept}」將從「{combo.name}」中移除，全部志願清單不受影響。</p>
+            <div style={{ display:'flex', gap:10 }}>
+              <button className="btn-outline" style={{ flex:1 }} onClick={() => setRemoveTarget(null)}>取消</button>
+              <button className="btn-primary" style={{ flex:1, background:'#C0392B', justifyContent:'center' }}
+                onClick={() => { onRemoveFromCombo(combo.id, removeTarget.id); setRemoveTarget(null); }}>
+                確認移除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── RECOMMEND FLOW ────────────────────────────────────────────────────────────
+function RecommendFlow({ mode, comboId, targetComboSchools, onClose, onApply }) {
+  const [step, setStep]   = useState(1);
+  const [inds, setInds]   = useState([]);
+  const [dragIdx, setDragIdx] = useState(null);
+  const [results, setResults] = useState([]);
+
+  const demoSchools = SCHOOLS.slice(0,5).map(s => s.id);
+  const sourceSchools = (mode === 'demo') ? demoSchools : (mode === 'all' ? [] : (targetComboSchools || demoSchools));
+
+  const hasSameSchoolDiffCluster = (() => {
+    const groups = {};
+    sourceSchools.forEach(id => {
+      const s = SCHOOLS.find(x => x.id === id);
+      if (!s) return;
+      if (!groups[s.name]) groups[s.name] = new Set();
+      groups[s.name].add(s.cluster);
+    });
+    return Object.values(groups).some(set => set.size > 1);
+  })();
+
+  function toggleInd(key) {
+    setInds(prev => {
+      if (prev.includes(key)) return prev.filter(x => x !== key);
+      if (prev.length >= 5) return prev;
+      return [...prev, key];
+    });
+  }
+
+  function handleIndDragStart(e, idx) {
+    e.dataTransfer.setData('text/plain', String(idx));
+    e.dataTransfer.effectAllowed = 'move';
+    setDragIdx(idx);
+  }
+
+  function handleIndDragOver(e, idx) {
+    e.preventDefault();
+    if (dragIdx === null || dragIdx === idx) return;
+    setInds(prev => {
+      const arr = [...prev];
+      const [removed] = arr.splice(dragIdx, 1);
+      arr.splice(idx, 0, removed);
+      return arr;
+    });
+    setDragIdx(idx);
+  }
+
+  function handleIndDragEnd() { setDragIdx(null); }
+
+  function generateResults() {
+    if (mode === 'all') {
+      onApply([], [...inds], null);
+      onClose();
+      return;
+    }
+    const list = sourceSchools.map(id => SCHOOLS.find(s => s.id === id)).filter(Boolean);
+    const withData = list.filter(s => s.hasBrand).sort((a, b) => calcScore(b, inds) - calcScore(a, inds));
+    const withoutData = list.filter(s => !s.hasBrand);
+    const sorted = [...withData, ...withoutData];
+    if (mode === 'demo') {
+      setResults(sorted);
+      setStep('preview');
+    } else {
+      onApply(sorted.map(s => s.id), [...inds], comboId);
+      onClose();
+    }
+  }
+
+  const selectedInds  = inds.map(key => INDICATORS.find(x => x.key === key)).filter(Boolean);
+  const availableInds = INDICATORS.filter(x => !inds.includes(x.key));
+
+  return (
+    <>
+      <div className="overlay" onClick={onClose} />
+      <div className="bottom-sheet">
+        <div className="sheet-handle" />
+
+        {step === 1 && (
+          <>
+            <div className="sheet-header">
+              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10 }}>
+                <div className="sheet-subtitle" style={{ fontSize:13, color:'#555', lineHeight:1.65, marginTop:2, flex:1 }}>
+                  按照你在意的學校條件，依重視程度選出推薦的指標（最多 5 個）
+                </div>
+                <button className="btn-ghost" onClick={onClose} style={{ fontSize:20, color:'#aaa', padding:0, flexShrink:0 }}>
+                  <i className="ti ti-x" />
+                </button>
+              </div>
+            </div>
+            <div className="sheet-body">
+
+              {/* 已選指標區：可拖拉排序 */}
+              {selectedInds.length > 0 && (
+                <div style={{ marginBottom:12 }}>
+                  <div style={{ fontSize:11, color:'#aaa', padding:'4px 0 8px', display:'flex', alignItems:'center', gap:5 }}>
+                    已選 {inds.length} / 5
+                    {inds.length > 1 && <span>・拖拉調整重要性 <i className="ti ti-arrows-move" style={{ fontSize:12 }} /></span>}
+                  </div>
+                  {selectedInds.map((ind, i) => {
+                    const isDragging = dragIdx === i;
+                    const numBg = i === 0 ? RANK_COLORS[0].bg : i === 1 ? RANK_COLORS[1].bg : i === 2 ? RANK_COLORS[2].bg : '#eee';
+                    const numFg = i === 0 ? RANK_COLORS[0].fg : i === 1 ? RANK_COLORS[1].fg : i === 2 ? RANK_COLORS[2].fg : '#888';
+                    return (
+                      <div key={ind.key}
+                        draggable
+                        onDragStart={e => handleIndDragStart(e, i)}
+                        onDragOver={e => handleIndDragOver(e, i)}
+                        onDragEnd={handleIndDragEnd}
+                        style={{
+                          display:'flex', alignItems:'center', gap:10,
+                          padding:'10px 12px', borderRadius:12, marginBottom:7,
+                          border:'1.5px solid var(--ai-border)', background:'var(--ai-bg)',
+                          cursor:'grab', userSelect:'none',
+                          opacity: isDragging ? 0.4 : 1,
+                        }}>
+                        <div style={{ width:24, height:24, borderRadius:'50%', flexShrink:0,
+                          background:numBg, color:numFg,
+                          display:'flex', alignItems:'center', justifyContent:'center',
+                          fontSize:12, fontWeight:800 }}>
+                          {i + 1}
+                        </div>
+                        <div style={{ width:30, height:30, borderRadius:8, background:ind.bg,
+                          display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                          <i className={`ti ${ind.icon}`} style={{ color:ind.ic, fontSize:15 }} />
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:13, fontWeight:700, color:'#222' }}>
+                            {ind.label}
+                            {(ind.key === 'salary' || ind.key === 'hire') && (
+                              <span style={{ fontSize:10, fontWeight:600, color:'#854F0B', background:'#FAEEDA', border:'0.5px solid #EF9F27', padding:'1px 6px', borderRadius:20, marginLeft:4, whiteSpace:'nowrap' }}>
+                                比較同校不同系的差異
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <i className="ti ti-grip-horizontal" style={{ color:'#ccc', fontSize:15, flexShrink:0 }} />
+                        <button onClick={e => { e.stopPropagation(); toggleInd(ind.key); }}
+                          style={{ background:'none', border:'none', cursor:'pointer', color:'#ccc', fontSize:16, padding:0, flexShrink:0, display:'flex', alignItems:'center' }}>
+                          <i className="ti ti-x" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  {inds.length < 5 && (
+                    <div style={{ fontSize:11, color:'#ccc', paddingLeft:2, marginBottom:8 }}>
+                      還可再選 {5 - inds.length} 個
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 可選指標區 */}
+              {availableInds.length > 0 && (
+                <>
+                  {inds.length === 0 && (
+                    <div style={{ fontSize:11, color:'#aaa', padding:'4px 0 8px' }}>已選 0 / 5</div>
+                  )}
+                  {availableInds.map(ind => {
+                    const dis = inds.length >= 5;
+                    return (
+                      <div key={ind.key}
+                        className={`ind-card ${dis ? 'disabled-card' : ''}`}
+                        onClick={() => !dis && toggleInd(ind.key)}>
+                        <div className="ind-icon" style={{ background:ind.bg }}>
+                          <i className={`ti ${ind.icon}`} style={{ color:ind.ic }} />
+                        </div>
+                        <div className="ind-text">
+                          <div className="ind-name">
+                            {ind.label}
+                            {(ind.key === 'salary' || ind.key === 'hire') && (
+                              <span style={{ fontSize:10, fontWeight:600, color:'#854F0B', background:'#FAEEDA', border:'0.5px solid #EF9F27', padding:'1px 6px', borderRadius:20, marginLeft:4, whiteSpace:'nowrap' }}>
+                                比較同校不同系的差異
+                              </span>
+                            )}
+                          </div>
+                          <div className="ind-desc">{ind.desc}</div>
+                        </div>
+                        <div className="check-circle" />
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+              {availableInds.length === 0 && (
+                <div style={{ textAlign:'center', fontSize:11, color:'#aaa', padding:'10px 0 4px' }}>
+                  已選滿 5 個，拖拉上方指標調整重要性
+                </div>
+              )}
+            </div>
+            <div className="sheet-footer">
+              <button className="btn-primary"
+                style={{ width:'100%', justifyContent:'center', opacity: inds.length < 1 ? 0.5 : 1 }}
+                disabled={inds.length < 1}
+                onClick={generateResults}>
+                確認，開始推薦
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 'preview' && (
+          <>
+            <div className="sheet-header">
+              <div style={{ display:'flex', alignItems:'center', marginBottom:4 }}>
+                <button className="back-btn" onClick={() => setStep(1)}>
+                  <i className="ti ti-arrow-left" /> 上一步
+                </button>
+              </div>
+              <div className="sheet-title">推薦志願排序</div>
+              <div className="sheet-subtitle" style={{ marginTop:4, lineHeight:1.6 }}>
+                {inds.map((k, i) => `${i+1}. ${INDICATORS.find(x=>x.key===k)?.label}`).join('　')}
+              </div>
+            </div>
+            <div className="sheet-body">
+              <div style={{ background:'var(--ai-bg)', border:'0.5px solid var(--ai-border)', borderRadius:10, padding:'12px 14px', marginBottom:14, display:'flex', gap:10, alignItems:'flex-start' }}>
+                <i className="ti ti-sparkles" style={{ color:'var(--ai-mid)', fontSize:15, flexShrink:0, marginTop:1 }} />
+                <span style={{ fontSize:12, color:'var(--ai-dark)', lineHeight:1.65 }}>
+                  以下為落點結果前 5 個志願的示範排序。<b>登入後</b>可依你加入的全部志願，產生專屬推薦順序。
+                </span>
+              </div>
+              {results.map((s, i) => {
+                const rank = s.hasBrand ? (results.filter(x => x.hasBrand).indexOf(s) + 1) : null;
+                const rankColor = rank && rank <= 3 ? RANK_COLORS[rank-1] : { bg:'#eee', fg:'#888' };
+                return (
+                  <div key={s.id} className={`preview-card ${!s.hasBrand ? 'no-data' : ''}`}>
+                    <div className="preview-card-top">
+                      <div className="seq-circle" style={{ background: s.hasBrand ? rankColor.bg : '#B4B2A9', color: s.hasBrand ? rankColor.fg : '#fff', width:24, height:24, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700 }}>
+                        {s.hasBrand ? rank : '—'}
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                          <span style={{ fontSize:14, fontWeight:700 }}>{s.name}</span>
+                          <ChanceBadge chance={s.chance} />
+                        </div>
+                        <div style={{ fontSize:13, color:'var(--brand)', fontWeight:500 }}>{s.dept}</div>
+                        <div style={{ fontSize:12, color:'#999', marginTop:2 }}>錄取機率 {s.rate}%</div>
+                      </div>
+                    </div>
+                    {s.hasBrand ? (
+                      <div className="tier-tags">
+                        {inds.map(key => <TierTag key={key} indKey={key} pr={s.pr[key]} />)}
+                      </div>
+                    ) : (
+                      <div className="no-data-warn">
+                        <i className="ti ti-alert-circle" /> 此校系尚無相關指標的資料，不列入指標排序，建議另行參考學校官方資訊。
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div style={{ textAlign:'center', fontSize:12, color:'#aaa', padding:'8px 0 4px' }}>
+                此排序僅供參考
+              </div>
+            </div>
+            <div className="sheet-footer">
+              <button className="btn-primary" style={{ width:'100%', justifyContent:'center', marginBottom:10 }}
+                onClick={onClose}>
+                登入，排序我的志願
+              </button>
+              <button className="btn-outline" style={{ width:'100%' }} onClick={onClose}>先不用</button>
+            </div>
+          </>
+        )}
+
+      </div>
+    </>
+  );
+}
+
+// ─── WISHLIST PAGE ─────────────────────────────────────────────────────────────
+function WishlistPage({ wishlist, combos, onBack, onOpenFlow, onCreateCombo, onAddToCombo, onRemoveFromCombo, onRestoreOrder, onReorderCombo, onSyncToAll }) {
+  const [activeTab, setActiveTab] = useState('all');
+  const [namingMode, setNamingMode] = useState(false);
+  const [pendingName, setPendingName] = useState('');
+  const [autoPickComboId, setAutoPickComboId] = useState(null);
+  const comboActionsRef = useRef(null);
+  const [allInds, setAllInds] = useState([]);
+  const [showAllIndsFlow, setShowAllIndsFlow] = useState(true);
+
+  const activeCombo = combos.find(c => c.id === activeTab);
+
+  function handleRequestNewCombo() {
+    setPendingName('');
+    setNamingMode(true);
+  }
+
+  function handleConfirmName() {
+    if (!pendingName.trim()) return;
+    const id = `c${Date.now()}`;
+    onCreateCombo(id, pendingName.trim());
+    setActiveTab(id);
+    setAutoPickComboId(id);
+    setNamingMode(false);
+    setPendingName('');
+  }
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100vh' }}>
+      {/* Header */}
+      <div style={{ background:'#fff', borderBottom:'1px solid #eee', padding:'0 16px', height:52, display:'flex', alignItems:'center', gap:12, flexShrink:0, position:'sticky', top:0, zIndex:100 }}>
+        <button className="btn-ghost" onClick={onBack}>
+          <i className="ti ti-arrow-left" style={{ fontSize:18 }} />
+        </button>
+        <span style={{ fontSize:16, fontWeight:700, flex:1 }}>排志願</span>
+        <span style={{ background:'#f0f0f0', color:'#555', fontSize:12, fontWeight:600, padding:'3px 10px', borderRadius:20 }}>
+          {wishlist.length} 個志願
+        </span>
+      </div>
+
+      {/* Tab bar */}
+      <div className="tab-bar" style={{ flexShrink:0 }}>
+        <div className={`tab-item ${activeTab==='all'?'active':''}`} onClick={() => setActiveTab('all')}>全部</div>
+        {combos.map(c => (
+          <div key={c.id} className={`tab-item ${activeTab===c.id?'active':''}`} onClick={() => setActiveTab(c.id)}>
+            {c.name}
+          </div>
+        ))}
+        {combos.length < 10 && (
+          <div className="tab-item" onClick={handleRequestNewCombo} style={{ color:'#999' }}>
+            <i className="ti ti-plus" />
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div style={{ flex:1, overflowY:'auto', paddingTop:8 }}>
+        {activeTab === 'all' ? (
+          <AllTab wishlist={wishlist} onCreateCombo={handleRequestNewCombo} allInds={allInds} onGoResults={onBack} />
+        ) : activeCombo ? (
+          <ComboTab
+            key={activeCombo.id}
+            combo={activeCombo}
+            wishlist={wishlist}
+            onOpenFlow={onOpenFlow}
+            onAddSchool={onAddToCombo}
+            onRemoveFromCombo={onRemoveFromCombo}
+            onRestoreOrder={onRestoreOrder}
+            onReorderCombo={onReorderCombo}
+            onSyncToAll={onSyncToAll}
+            actionsRef={comboActionsRef}
+            initialPicking={autoPickComboId === activeCombo?.id}
+            defaultInds={allInds}
+          />
+        ) : null}
+      </div>
+
+      {/* Bottom action bar */}
+      {activeTab === 'all' ? (
+        <div style={{ padding:'12px 16px 28px', borderTop:'1px solid #eee', background:'#fff', flexShrink:0 }}>
+          <button className="btn-primary" style={{ width:'100%', justifyContent:'center' }} onClick={onBack}>
+            <i className="ti ti-arrow-left" style={{ fontSize:15 }} />
+            返回列表
+          </button>
+        </div>
+      ) : activeCombo ? (
+        <div style={{ padding:'12px 16px 28px', borderTop:'1px solid #eee', background:'#fff', flexShrink:0, display:'flex', gap:10 }}>
+          <button className="btn-outline" style={{ flex:1 }}
+            onClick={() => comboActionsRef.current?.openPicker()}>
+            新增志願
+          </button>
+          <button className="btn-primary" style={{ flex:1, justifyContent:'center' }}
+            onClick={() => onOpenFlow('apply', activeCombo.id)}>
+            <i className="ti ti-sparkles" style={{ fontSize:14 }} />
+            調整排序條件
+          </button>
+        </div>
+      ) : null}
+
+      {/* Auto-trigger allInds flow on first visit to AllTab */}
+      {activeTab === 'all' && allInds.length === 0 && showAllIndsFlow && (
+        <RecommendFlow
+          mode="all"
+          onClose={() => setShowAllIndsFlow(false)}
+          onApply={(_, inds) => { setAllInds(inds); setShowAllIndsFlow(false); }}
+        />
+      )}
+
+      {/* Naming modal */}
+      {namingMode && (
+        <>
+          <div className="overlay" onClick={() => setNamingMode(false)} />
+          <div className="bottom-sheet">
+            <div className="sheet-handle" />
+            <div style={{ padding:'20px 20px 32px' }}>
+              <div style={{ fontSize:16, fontWeight:700, marginBottom:6 }}>幫這個組合命名</div>
+              <div style={{ fontSize:12, color:'#999', marginBottom:16 }}>命名後會自動引導你加入志願</div>
+              <input
+                type="text"
+                value={pendingName}
+                onChange={e => setPendingName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleConfirmName()}
+                placeholder="例如：衝刺志願、穩健保底…"
+                autoFocus
+                style={{ width:'100%', padding:'12px 14px', borderRadius:10, border:'1.5px solid #ddd', fontSize:14, outline:'none', marginBottom:16, fontFamily:'inherit' }}
+              />
+              <div style={{ display:'flex', gap:10 }}>
+                <button className="btn-outline" style={{ flex:1 }} onClick={() => setNamingMode(false)}>取消</button>
+                <button className="btn-primary"
+                  style={{ flex:1, justifyContent:'center', opacity: pendingName.trim() ? 1 : 0.5 }}
+                  disabled={!pendingName.trim()}
+                  onClick={handleConfirmName}>
+                  建立並加入志願
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── APP ───────────────────────────────────────────────────────────────────────
+function App() {
+  const [page, setPage]           = useState('results');
+  const [wishlist, setWishlist]   = useState(['ntu-law','ntu-bio','ncku-tr','ntu-cs','nccu-nw','ntust-im']);
+  const [combos, setCombos]       = useState([{
+    id:'c1', name:'組合一',
+    schools:['ntu-law','ntu-bio','ncku-tr','ntu-cs','fju-soc','ntust-im'],
+    // 預先套用三個指標，方便直接看到星等 + 部分無資料的呈現狀態
+    appliedInds:['job','fame','hire'],
+    recommendedOrder:['ntu-law','ntu-bio','ncku-tr','ntu-cs','fju-soc','ntust-im'],
+  }]);
+  const [flow, setFlow]           = useState(null);
+
+  function toggleWish(id, action) {
+    if (action === 'add') setWishlist(prev => [...prev, id]);
+    else {
+      setWishlist(prev => prev.filter(x => x !== id));
+      setCombos(prev => prev.map(c => ({ ...c, schools: c.schools.filter(x => x !== id) })));
+    }
+  }
+
+  function createCombo(id, name) {
+    setCombos(prev => [...prev, { id, name, schools: [], appliedInds: [], recommendedOrder: [] }]);
+  }
+
+  function addToCombo(comboId, schoolId) {
+    setCombos(prev => prev.map(c => c.id === comboId ? { ...c, schools: [...c.schools, schoolId] } : c));
+  }
+
+  function removeFromCombo(comboId, schoolId) {
+    setCombos(prev => prev.map(c => c.id === comboId ? { ...c, schools: c.schools.filter(x => x !== schoolId) } : c));
+  }
+
+  function applySort(orderedIds, orderedInds, comboId) {
+    if (comboId) {
+      setCombos(prev => prev.map(c => c.id === comboId
+        ? { ...c, schools: orderedIds, appliedInds: orderedInds, recommendedOrder: orderedIds }
+        : c));
+    }
+    setFlow(null);
+  }
+
+  function restoreOrder(comboId) {
+    setCombos(prev => prev.map(c => c.id === comboId
+      ? { ...c, schools: [...c.recommendedOrder] }
+      : c));
+  }
+
+  function reorderCombo(comboId, newSchools) {
+    setCombos(prev => prev.map(c => c.id === comboId
+      ? { ...c, schools: newSchools }
+      : c));
+  }
+
+  function applyComboOrderToAll(comboId) {
+    const combo = combos.find(c => c.id === comboId);
+    if (!combo || combo.schools.length === 0) return;
+    setWishlist(prev => {
+      const result = [...prev];
+      const slots = prev
+        .map((id, i) => ({ id, i }))
+        .filter(({ id }) => combo.schools.includes(id))
+        .map(({ i }) => i)
+        .sort((a, b) => a - b);
+      const ordered = combo.schools.filter(id => prev.includes(id));
+      slots.forEach((slotIdx, n) => { result[slotIdx] = ordered[n]; });
+      return result;
+    });
+  }
+
+  const targetCombo = flow ? combos.find(c => c.id === flow.comboId) : null;
+
+  return (
+    <div className="app-shell">
+      {page === 'results' && (
+        <>
+          <div className="navbar">
+            <div className="navbar-logo">
+              <em>104</em> <span>落點分析</span>
+            </div>
+            <nav style={{ display:'flex', gap:12, fontSize:13, color:'#555' }}>
+              <span style={{ color:'var(--brand)', fontWeight:600 }}>114分科落點分析</span>
+            </nav>
+          </div>
+          <ResultsPage
+            wishlist={wishlist}
+            onToggleWish={toggleWish}
+            onOpenFlow={(mode, comboId) => setFlow({ mode, comboId })}
+            onGoWishlist={() => setPage('wishlist')}
+          />
+        </>
+      )}
+
+      {page === 'wishlist' && (
+        <WishlistPage
+          wishlist={wishlist}
+          combos={combos}
+          onBack={() => setPage('results')}
+          onOpenFlow={(mode, comboId) => setFlow({ mode, comboId })}
+          onCreateCombo={createCombo}
+          onAddToCombo={addToCombo}
+          onRemoveFromCombo={removeFromCombo}
+          onRestoreOrder={restoreOrder}
+          onReorderCombo={reorderCombo}
+          onSyncToAll={applyComboOrderToAll}
+        />
+      )}
+
+      {flow && (
+        <RecommendFlow
+          mode={flow.mode}
+          comboId={flow.comboId}
+          targetComboSchools={targetCombo?.schools}
+          onClose={() => setFlow(null)}
+          onApply={applySort}
+        />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
