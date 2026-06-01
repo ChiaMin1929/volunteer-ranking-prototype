@@ -300,6 +300,16 @@
     font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 20px; margin-left: 6px;
   }
   .page-body { padding-bottom: 96px; }
+  .demo-toggle {
+    display: flex; align-items: center; gap: 0;
+    background: #f0f0f0; border-radius: 20px; padding: 3px;
+  }
+  .demo-toggle button {
+    background: none; border: none; cursor: pointer;
+    padding: 4px 11px; border-radius: 16px; font-size: 11px; font-weight: 600; color: #888;
+    transition: all .15s; white-space: nowrap;
+  }
+  .demo-toggle button.on { background: #fff; color: #333; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
 </style>
 </head>
 <body>
@@ -502,7 +512,7 @@ function TierTag({ indKey, pr }) {
 }
 
 // ─── RESULTS PAGE ─────────────────────────────────────────────────────────────
-function ResultsPage({ wishlist, onToggleWish, onOpenFlow, onGoWishlist }) {
+function ResultsPage({ wishlist, onToggleWish, onOpenFlow, onGoWishlist, isLoggedIn }) {
   const [removeTarget, setRemoveTarget] = useState(null);
 
   function handleHeart(school) {
@@ -517,11 +527,18 @@ function ResultsPage({ wishlist, onToggleWish, onOpenFlow, onGoWishlist }) {
           <div className="page-title">分科 — 落點分析列表</div>
           <div className="page-subtitle">共 {SCHOOLS.length} 筆｜依錄取機率排序</div>
         </div>
-        <button className="btn-primary" onClick={onGoWishlist}>
-          <i className="ti ti-heart" />
-          我的志願
-          {wishlist.length > 0 && <span className="badge-count">{wishlist.length}</span>}
-        </button>
+        {isLoggedIn ? (
+          <button className="btn-primary" onClick={onGoWishlist}>
+            <i className="ti ti-heart" />
+            我的志願
+            {wishlist.length > 0 && <span className="badge-count">{wishlist.length}</span>}
+          </button>
+        ) : (
+          <button className="btn-primary" onClick={onGoWishlist}>
+            <i className="ti ti-login" />
+            登入排志願
+          </button>
+        )}
       </div>
 
       {SCHOOLS.map((s, i) => (
@@ -594,10 +611,20 @@ function ResultsPage({ wishlist, onToggleWish, onOpenFlow, onGoWishlist }) {
           style={{ flex:1, background:'#fff', color:'#555', border:'1.5px solid #ccc', borderRadius:12, padding:'13px 10px', fontSize:14, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 12px rgba(0,0,0,.1)' }}>
           修改成績
         </button>
-        <button onClick={onGoWishlist}
-          style={{ flex:1, background:'var(--brand)', color:'#fff', border:'none', borderRadius:12, padding:'13px 10px', fontSize:14, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 20px rgba(216,90,48,.4)' }}>
-          登入排志願
-        </button>
+        {isLoggedIn ? (
+          <button onClick={onGoWishlist}
+            style={{ flex:1, background:'var(--brand)', color:'#fff', border:'none', borderRadius:12, padding:'13px 10px', fontSize:14, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, boxShadow:'0 4px 20px rgba(216,90,48,.4)' }}>
+            <i className="ti ti-heart" style={{ fontSize:15 }} />
+            我的志願
+            {wishlist.length > 0 && <span className="badge-count">{wishlist.length}</span>}
+          </button>
+        ) : (
+          <button onClick={onGoWishlist}
+            style={{ flex:1, background:'var(--brand)', color:'#fff', border:'none', borderRadius:12, padding:'13px 10px', fontSize:14, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, boxShadow:'0 4px 20px rgba(216,90,48,.4)' }}>
+            <i className="ti ti-login" style={{ fontSize:15 }} />
+            登入排志願
+          </button>
+        )}
       </div>
 
       {removeTarget && (
@@ -1462,6 +1489,7 @@ function WishlistPage({ wishlist, combos, onBack, onOpenFlow, onCreateCombo, onA
 // ─── APP ───────────────────────────────────────────────────────────────────────
 function App() {
   const [page, setPage]           = useState('results');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [wishlist, setWishlist]   = useState(['ntu-law','ntu-bio','ncku-tr','ntu-cs','nccu-nw','ntust-im']);
   const [combos, setCombos]       = useState([{
     id:'c1', name:'組合一',
@@ -1539,15 +1567,17 @@ function App() {
             <div className="navbar-logo">
               <em>104</em> <span>落點分析</span>
             </div>
-            <nav style={{ display:'flex', gap:12, fontSize:13, color:'#555' }}>
-              <span style={{ color:'var(--brand)', fontWeight:600 }}>114分科落點分析</span>
-            </nav>
+            <div className="demo-toggle">
+              <button className={!isLoggedIn ? 'on' : ''} onClick={() => setIsLoggedIn(false)}>未登入</button>
+              <button className={isLoggedIn ? 'on' : ''} onClick={() => setIsLoggedIn(true)}>已登入</button>
+            </div>
           </div>
           <ResultsPage
             wishlist={wishlist}
             onToggleWish={toggleWish}
             onOpenFlow={(mode, comboId) => setFlow({ mode, comboId })}
             onGoWishlist={() => setPage('wishlist')}
+            isLoggedIn={isLoggedIn}
           />
         </>
       )}
