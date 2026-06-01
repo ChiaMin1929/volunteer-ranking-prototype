@@ -565,8 +565,8 @@ function ResultsPage({ wishlist, onToggleWish, onOpenFlow, onGoWishlist, isLogge
               <button className="detail-btn">看動態詳情 <i className="ti ti-chevron-right" /></button>
             </div>
           </div>
-          {/* 第 10 筆後顯示品牌力預覽版位（prototype 以最後一筆示意） */}
-          {i === SCHOOLS.length - 1 && (
+          {/* 第 10 筆後顯示品牌力預覽版位（未登入才顯示） */}
+          {i === SCHOOLS.length - 1 && !isLoggedIn && (
             <div style={{ margin:'0 16px 12px', borderRadius:12, background:'linear-gradient(135deg,#FAECE7 0%,#F5EEFF 100%)', border:'0.5px solid var(--brand-border)', padding:'16px 16px 14px' }}>
               <div style={{ fontSize:14, fontWeight:700, color:'#222', lineHeight:1.5, marginBottom:12 }}>
                 把校系加入志願，就可以看到學校五星指標
