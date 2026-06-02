@@ -512,6 +512,35 @@ function TierTag({ indKey, pr }) {
 }
 
 // ─── RESULTS PAGE ─────────────────────────────────────────────────────────────
+// ─── REMOVE WISH MODAL（全部志願清單取消收藏防呆）──────────────────────────────
+function RemoveWishModal({ school, onCancel, onConfirm }) {
+  const [noRemind, setNoRemind] = useState(false);
+  return (
+    <div className="confirm-modal-overlay" onClick={onCancel}>
+      <div className="confirm-modal" onClick={e => e.stopPropagation()}>
+        <h3>確定移除「{school.name}-{school.dept}」？</h3>
+        <p style={{ marginBottom:16 }}>從我的志願清單中移除後，也會把其他分類中的此校系移除喔！</p>
+        <label style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#666', marginBottom:20, cursor:'pointer', userSelect:'none' }}>
+          <input
+            type="checkbox"
+            checked={noRemind}
+            onChange={e => setNoRemind(e.target.checked)}
+            style={{ width:16, height:16, accentColor:'var(--brand)', cursor:'pointer' }}
+          />
+          今天不再提醒
+        </label>
+        <div style={{ display:'flex', gap:10 }}>
+          <button className="btn-outline" style={{ flex:1 }} onClick={onCancel}>取消</button>
+          <button className="btn-primary" style={{ flex:1, background:'#C0392B', justifyContent:'center' }}
+            onClick={onConfirm}>
+            確認移除
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ResultsPage({ wishlist, onToggleWish, onOpenFlow, onGoWishlist, isLoggedIn }) {
   const [removeTarget, setRemoveTarget] = useState(null);
 
@@ -628,26 +657,18 @@ function ResultsPage({ wishlist, onToggleWish, onOpenFlow, onGoWishlist, isLogge
       </div>
 
       {removeTarget && (
-        <div className="confirm-modal-overlay" onClick={() => setRemoveTarget(null)}>
-          <div className="confirm-modal" onClick={e => e.stopPropagation()}>
-            <h3>移除此志願？</h3>
-            <p>「{removeTarget.name} {removeTarget.dept}」將從你的志願清單中移除，相關組合也會同步更新。</p>
-            <div style={{ display:'flex', gap:10 }}>
-              <button className="btn-outline" style={{ flex:1 }} onClick={() => setRemoveTarget(null)}>取消</button>
-              <button className="btn-primary" style={{ flex:1, background:'#C0392B', justifyContent:'center' }}
-                onClick={() => { onToggleWish(removeTarget.id, 'remove'); setRemoveTarget(null); }}>
-                確認移除
-              </button>
-            </div>
-          </div>
-        </div>
+        <RemoveWishModal
+          school={removeTarget}
+          onCancel={() => setRemoveTarget(null)}
+          onConfirm={() => { onToggleWish(removeTarget.id, 'remove'); setRemoveTarget(null); }}
+        />
       )}
     </div>
   );
 }
 
 // ─── WISHLIST CARD ─────────────────────────────────────────────────────────────
-function WishlistCard({ school, index, showRemove, onRemove, appliedInds = [], dragHandlers = {} }) {
+function WishlistCard({ school, index, showRemove, onRemove, onHeartClick, appliedInds = [], dragHandlers = {} }) {
   const { draggable, onDragStart, onDragOver, onDragEnd, isDragging, isDragOver } = dragHandlers;
   const cardStyle = {
     ...(!school.hasBrand ? { borderStyle:'dashed' } : {}),
@@ -673,7 +694,7 @@ function WishlistCard({ school, index, showRemove, onRemove, appliedInds = [], d
             <i className="ti ti-trash" />
           </button>
         ) : (
-          <button className="heart-btn active">
+          <button className="heart-btn active" onClick={onHeartClick}>
             <i className="ti ti-heart-filled" />
           </button>
         )}
@@ -714,8 +735,9 @@ function WishlistCard({ school, index, showRemove, onRemove, appliedInds = [], d
 }
 
 // ─── ALL TAB ───────────────────────────────────────────────────────────────────
-function AllTab({ wishlist, onCreateCombo, allInds, onGoResults }) {
+function AllTab({ wishlist, onCreateCombo, allInds, onGoResults, onToggleWish }) {
   const schools = wishlist.map(id => SCHOOLS.find(s => s.id === id)).filter(Boolean);
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   if (!schools.length) return (
     <div className="empty-state">
@@ -758,7 +780,7 @@ function AllTab({ wishlist, onCreateCombo, allInds, onGoResults }) {
       <div className="section-label">依加入時間排序，共 {schools.length} 個志願</div>
       {schools.map((s, i) => (
         <React.Fragment key={s.id}>
-          <WishlistCard school={s} index={i} appliedInds={allInds} />
+          <WishlistCard school={s} index={i} appliedInds={allInds} onHeartClick={() => setRemoveTarget(s)} />
           {i === 4 && (
             <div style={{ margin:'2px 16px 10px', background:'var(--warn-bg)', border:'0.5px solid #EF9F27', borderRadius:10, padding:'10px 13px', display:'flex', alignItems:'center', gap:10 }}>
               <i className="ti ti-alert-triangle" style={{ color:'var(--warn-txt)', fontSize:15, flexShrink:0 }} />
@@ -774,6 +796,13 @@ function AllTab({ wishlist, onCreateCombo, allInds, onGoResults }) {
         </React.Fragment>
       ))}
       <div style={{ height:16 }} />
+      {removeTarget && (
+        <RemoveWishModal
+          school={removeTarget}
+          onCancel={() => setRemoveTarget(null)}
+          onConfirm={() => { onToggleWish(removeTarget.id, 'remove'); setRemoveTarget(null); }}
+        />
+      )}
     </>
   );
 }
@@ -864,6 +893,7 @@ function ComboTab({ combo, wishlist, onOpenFlow, onAddSchool, onRemoveFromCombo,
   const [pickSelected, setPickSelected] = useState([]);
   const [showIndInfo, setShowIndInfo] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
+  const [noRemindCombo, setNoRemindCombo] = useState(false);
 
   if (actionsRef) {
     actionsRef.current = {
@@ -990,9 +1020,9 @@ function ComboTab({ combo, wishlist, onOpenFlow, onAddSchool, onRemoveFromCombo,
             <div className="sheet-handle" />
             <div className="sheet-header" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
               <div>
-                <div className="sheet-title">選擇要新增的志願</div>
+                <div className="sheet-title">選擇要新增到此分類的志願</div>
                 <div className="sheet-subtitle">
-                  {available.length === 0 ? '全部志願已在此組合中' : `可從 ${available.length} 個志願中選擇，已選 ${pickSelected.length} 個`}
+                  {available.length === 0 ? '全部志願已在此組合中' : `最多選 10 個，已選 ${pickSelected.length} 個`}
                 </div>
               </div>
               <button className="btn-ghost" onClick={() => setPicking(false)} style={{ fontSize:20, color:'#aaa', padding:0 }}>
@@ -1058,8 +1088,17 @@ function ComboTab({ combo, wishlist, onOpenFlow, onAddSchool, onRemoveFromCombo,
       {removeTarget && (
         <div className="confirm-modal-overlay" onClick={() => setRemoveTarget(null)}>
           <div className="confirm-modal" onClick={e => e.stopPropagation()}>
-            <h3>從組合移除？</h3>
-            <p>「{removeTarget.name} {removeTarget.dept}」將從「{combo.name}」中移除，全部志願清單不受影響。</p>
+            <h3>從分類中移除？</h3>
+            <p style={{ marginBottom:16 }}>「{removeTarget.name}-{removeTarget.dept}」將從「{combo.name}」中移除，全部志願清單不受影響。</p>
+            <label style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#666', marginBottom:20, cursor:'pointer', userSelect:'none' }}>
+              <input
+                type="checkbox"
+                checked={noRemindCombo}
+                onChange={e => setNoRemindCombo(e.target.checked)}
+                style={{ width:16, height:16, accentColor:'var(--brand)', cursor:'pointer' }}
+              />
+              今天不再提醒
+            </label>
             <div style={{ display:'flex', gap:10 }}>
               <button className="btn-outline" style={{ flex:1 }} onClick={() => setRemoveTarget(null)}>取消</button>
               <button className="btn-primary" style={{ flex:1, background:'#C0392B', justifyContent:'center' }}
@@ -1155,8 +1194,9 @@ function RecommendFlow({ mode, comboId, targetComboSchools, onClose, onApply }) 
           <>
             <div className="sheet-header">
               <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10 }}>
-                <div className="sheet-subtitle" style={{ fontSize:13, color:'#555', lineHeight:1.65, marginTop:2, flex:1 }}>
-                  按照你在意的學校條件，依重視程度選出推薦的指標（最多 5 個）
+                <div style={{ flex:1 }}>
+                  <div className="sheet-title">你希望在收藏志願中顯示哪些學校指標？</div>
+                  <div className="sheet-subtitle" style={{ marginTop:4 }}>依你選擇的條件呈現學校的五星指標</div>
                 </div>
                 <button className="btn-ghost" onClick={onClose} style={{ fontSize:20, color:'#aaa', padding:0, flexShrink:0 }}>
                   <i className="ti ti-x" />
@@ -1344,7 +1384,7 @@ function RecommendFlow({ mode, comboId, targetComboSchools, onClose, onApply }) 
 }
 
 // ─── WISHLIST PAGE ─────────────────────────────────────────────────────────────
-function WishlistPage({ wishlist, combos, onBack, onOpenFlow, onCreateCombo, onAddToCombo, onRemoveFromCombo, onRestoreOrder, onReorderCombo, onSyncToAll }) {
+function WishlistPage({ wishlist, combos, onBack, onOpenFlow, onToggleWish, onCreateCombo, onAddToCombo, onRemoveFromCombo, onRestoreOrder, onReorderCombo, onSyncToAll }) {
   const [activeTab, setActiveTab] = useState('all');
   const [namingMode, setNamingMode] = useState(false);
   const [pendingName, setPendingName] = useState('');
@@ -1372,15 +1412,23 @@ function WishlistPage({ wishlist, combos, onBack, onOpenFlow, onCreateCombo, onA
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh' }}>
-      {/* Header */}
-      <div style={{ background:'#fff', borderBottom:'1px solid #eee', padding:'0 16px', height:52, display:'flex', alignItems:'center', gap:12, flexShrink:0, position:'sticky', top:0, zIndex:100 }}>
-        <button className="btn-ghost" onClick={onBack}>
-          <i className="ti ti-arrow-left" style={{ fontSize:18 }} />
+      {/* Header — 頂部 navbar */}
+      <div style={{ background:'#fff', borderBottom:'1px solid #eee', padding:'0 16px', height:56, display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, position:'sticky', top:0, zIndex:100 }}>
+        <button className="btn-ghost" style={{ padding:0, fontSize:22, color:'#333' }}>
+          <i className="ti ti-menu-2" />
         </button>
-        <span style={{ fontSize:16, fontWeight:700, flex:1 }}>排志願</span>
-        <span style={{ background:'#f0f0f0', color:'#555', fontSize:12, fontWeight:600, padding:'3px 10px', borderRadius:20 }}>
-          {wishlist.length} 個志願
-        </span>
+        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+          <em style={{ color:'var(--brand)', fontStyle:'normal', fontWeight:800, fontSize:16 }}>104</em>
+          <span style={{ fontWeight:700, fontSize:15, color:'#333', letterSpacing:'.5px' }}>落點分析</span>
+        </div>
+        {/* 使用者頭像 */}
+        <div style={{ width:32, height:32, borderRadius:'50%', background:'#f0f0f0', border:'1.5px solid #e0e0e0', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+          <i className="ti ti-deer" style={{ fontSize:18, color:'#bbb' }} />
+        </div>
+      </div>
+      {/* 頁面標題 */}
+      <div style={{ background:'#fff', padding:'10px 16px 10px', borderBottom:'1px solid #f0f0f0', flexShrink:0 }}>
+        <div style={{ fontSize:16, fontWeight:700, color:'#222' }}>分科－我的志願</div>
       </div>
 
       {/* Tab bar */}
@@ -1401,7 +1449,7 @@ function WishlistPage({ wishlist, combos, onBack, onOpenFlow, onCreateCombo, onA
       {/* Content */}
       <div style={{ flex:1, overflowY:'auto', paddingTop:8 }}>
         {activeTab === 'all' ? (
-          <AllTab wishlist={wishlist} onCreateCombo={handleRequestNewCombo} allInds={allInds} onGoResults={onBack} />
+          <AllTab wishlist={wishlist} onCreateCombo={handleRequestNewCombo} allInds={allInds} onGoResults={onBack} onToggleWish={onToggleWish} />
         ) : activeCombo ? (
           <ComboTab
             key={activeCombo.id}
@@ -1588,6 +1636,7 @@ function App() {
           combos={combos}
           onBack={() => setPage('results')}
           onOpenFlow={(mode, comboId) => setFlow({ mode, comboId })}
+          onToggleWish={toggleWish}
           onCreateCombo={createCombo}
           onAddToCombo={addToCombo}
           onRemoveFromCombo={removeFromCombo}
