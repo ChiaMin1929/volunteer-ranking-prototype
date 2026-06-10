@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>落點分析計算工具</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f5f3;
+      color: #1a1a18;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container { max-width: 720px; margin: 0 auto; }
+
+    h1 { font-size: 20px; font-weight: 500; margin-bottom: 6px; }
+    .subtitle { font-size: 13px; color: #888780; margin-bottom: 1.5rem; line-height: 1.6; }
+
+    .card {
+      background: #fff;
+      border: 0.5px solid rgba(0,0,0,0.12);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      color: #888780;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* subject rows */
+    .subject-table { width: 100%; border-collapse: collapse; }
+    .subject-table thead th {
+      font-size: 11px;
+      color: #888780;
+      font-weight: 500;
+      text-align: left;
+      padding: 0 8px 8px;
+      border-bottom: 0.5px solid rgba(0,0,0,0.08);
+    }
+    .subject-table thead th.col-score { width: 110px; }
+    .subject-table thead th.col-weight { width: 90px; }
+
+    .subject-table tbody tr { border-bottom: 0.5px solid rgba(0,0,0,0.05); }
+    .subject-table tbody tr:last-child { border-bottom: none; }
+
+    .subject-table td {
+      padding: 7px 8px;
+      font-size: 13px;
+      color: #1a1a18;
+      vertical-align: middle;
+    }
+    .subject-table td.col-label { color: #5f5e5a; width: 72px; }
+
+    .subject-table input {
+      width: 100%;
+      height: 34px;
+      padding: 0 9px;
+      font-size: 13px;
+      border: 0.5px solid rgba(0,0,0,0.18);
+      border-radius: 7px;
+      background: #fff;
+      color: #1a1a18;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .subject-table input:hover { border-color: rgba(0,0,0,0.32); }
+    .subject-table input:focus {
+      border-color: #534AB7;
+      box-shadow: 0 0 0 3px rgba(83,74,183,0.12);
+    }
+    .subject-table input::placeholder { color: #c0bdb4; }
+    .subject-table input.weight-input { background: #fafaf8; }
+
+    .weight-hint {
+      font-size: 11px;
+      color: #b4b2a9;
+      padding-left: 2px;
+    }
+
+    .sub-divider { height: 0.5px; background: rgba(0,0,0,0.08); margin: 14px 0; }
+    .hint { font-size: 12px; color: #888780; margin-bottom: 12px; line-height: 1.6; }
+
+    .err { font-size: 12px; color: #a32d2d; margin-top: 8px; display: none; }
+
+    .calc-btn {
+      width: 100%;
+      padding: 11px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      background: #1a1a18;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      transition: opacity 0.15s, transform 0.1s;
+      margin-top: 4px;
+    }
+    .calc-btn:hover { opacity: 0.85; }
+    .calc-btn:active { transform: scale(0.98); }
+
+    .divider { height: 0.5px; background: rgba(0,0,0,0.08); margin: 1.5rem 0; }
+
+    .result-area { display: none; }
+
+    .result-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .result-card {
+      background: #f5f5f3;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .result-label { font-size: 12px; color: #888780; margin-bottom: 4px; }
+    .result-value { font-size: 22px; font-weight: 500; color: #1a1a18; }
+
+    .category-card {
+      background: #f5f5f3;
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tag { display: inline-block; font-size: 13px; padding: 5px 16px; border-radius: 8px; font-weight: 500; }
+    .tag-safe      { background: #E1F5EE; color: #0F6E56; }
+    .tag-standard  { background: #EAF3DE; color: #3B6D11; }
+    .tag-challenge { background: #FAEEDA; color: #854F0B; }
+    .tag-dream     { background: #FCEBEB; color: #A32D2D; }
+
+    .formula-box {
+      background: #f5f5f3;
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #5f5e5a;
+      line-height: 2;
+    }
+
+    .legend-title {
+      font-size: 11px;
+      color: #888780;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .legend-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .legend-table th {
+      text-align: left;
+      font-weight: 500;
+      font-size: 12px;
+      color: #888780;
+      padding: 6px 10px;
+      border-bottom: 0.5px solid rgba(0,0,0,0.1);
+    }
+    .legend-table td {
+      padding: 8px 10px;
+      border-bottom: 0.5px solid rgba(0,0,0,0.06);
+    }
+    .legend-table tr:last-child td { border-bottom: none; }
+
+    @media (max-width: 480px) {
+      .grid-2, .result-grid-2 { grid-template-columns: 1fr; }
+      .subject-table thead th.col-weight { width: 72px; }
+      .subject-table thead th.col-score  { width: 88px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>落點分析計算工具</h1>
+  <p class="subtitle">輸入校系預估分數與考生成績及各科加權，計算風險值與錄取機率</p>
+
+  <!-- 校系預估 -->
+  <div class="card">
+    <p class="section-title">校系預估資料</p>
+    <div class="grid-2">
+      <div>
+        <label style="font-size:13px; color:#5f5e5a; display:block; margin-bottom:4px;">預估錄取加權總分</label>
+        <input type="number" id="total-est" placeholder="例：254.8" step="0.01"
+          style="width:100%; height:36px; padding:0 10px; font-size:14px; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; outline:none; font-family:inherit;" />
+      </div>
+      <div>
+        <label style="font-size:13px; color:#5f5e5a; display:block; margin-bottom:4px;">預估錄取單科平均</label>
+        <input type="number" id="avg-est" placeholder="例：50.96" step="0.01"
+          style="width:100%; height:36px; padding:0 10px; font-size:14px; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; outline:none; font-family:inherit;" />
+      </div>
+    </div>
+    <p id="est-err" class="err">請填入有效的預估分數</p>
+  </div>
+
+  <!-- 學測 -->
+  <div class="card">
+    <p class="section-title">學測成績（1–60 級分）</p>
+    <table class="subject-table">
+      <thead>
+        <tr>
+          <th>科目</th>
+          <th class="col-score">級分</th>
+          <th class="col-weight">加權權重 <span class="weight-hint">（空白＝不採計）</span></th>
+        </tr>
+      </thead>
+      <tbody id="gsat-body">
+        <!-- 學測科目由 JS 渲染 -->
+      </tbody>
+    </table>
+
+    <div class="sub-divider"></div>
+    <p class="section-title">分科測驗成績</p>
+    <p class="hint">一般科目 1–60 級分；術科 1–100 級分</p>
+    <table class="subject-table">
+      <thead>
+        <tr>
+          <th>科目</th>
+          <th class="col-score">級分</th>
+          <th class="col-weight">加權權重 <span class="weight-hint">（空白＝不採計）</span></th>
+        </tr>
+      </thead>
+      <tbody id="sat-body">
+        <!-- 分科科目由 JS 渲染 -->
+      </tbody>
+    </table>
+
+    <p id="score-err" class="err">請確認各科填入範圍正確，有填成績的科目請同時填入權重，且至少填入一科</p>
+  </div>
+
+  <button class="calc-btn" onclick="calculate()">計算風險值與錄取機率</button>
+
+  <!-- 結果 -->
+  <div class="result-area" id="result-area">
+    <div class="divider"></div>
+    <div class="result-grid-2">
+      <div class="result-card">
+        <p class="result-label">採計科目數</p>
+        <p class="result-value" id="count-val">—</p>
+      </div>
+      <div class="result-card">
+        <p class="result-label">考生加權單科平均</p>
+        <p class="result-value" id="my-avg">—</p>
+      </div>
+    </div>
+    <div class="result-grid-2">
+      <div class="result-card">
+        <p class="result-label">風險值</p>
+        <p class="result-value" id="risk-val">—</p>
+      </div>
+      <div class="result-card">
+        <p class="result-label">錄取機率</p>
+        <p class="result-value" id="prob-val">—</p>
+      </div>
+    </div>
+    <div class="category-card">
+      <p class="result-label">錄取機會分類</p>
+      <span id="category-tag" class="tag">—</span>
+    </div>
+    <div class="formula-box" id="formula-detail"></div>
+  </div>
+
+  <!-- 對照表 -->
+  <div class="card legend" style="margin-top:1.5rem;">
+    <p class="legend-title">風險值對照表</p>
+    <table class="legend-table">
+      <thead>
+        <tr><th>分類</th><th>風險值範圍</th><th>錄取機率範圍</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="tag tag-safe"      style="font-size:12px;padding:3px 10px;">安全保底</span></td><td>3% ~ 10%（10% 以上均為 99%）</td><td>81 – 99%</td></tr>
+        <tr><td><span class="tag tag-standard"  style="font-size:12px;padding:3px 10px;">標準落點</span></td><td>-1% ~ 3%</td><td>63 – 76%</td></tr>
+        <tr><td><span class="tag tag-challenge" style="font-size:12px;padding:3px 10px;">有點挑戰</span></td><td>-6% ~ -1%</td><td>31 – 56%</td></tr>
+        <tr><td><span class="tag tag-dream"     style="font-size:12px;padding:3px 10px;">超級夢幻</span></td><td>-10% ~ -6%（-10% 以下均為 1%）</td><td>1 – 29%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const GSAT_SUBJECTS = [
+    { id: 'chi',   label: '國文',   max: 60 },
+    { id: 'eng',   label: '英文',   max: 60 },
+    { id: 'mathA', label: '數學 A', max: 60 },
+    { id: 'mathB', label: '數學 B', max: 60 },
+    { id: 'soc',   label: '社會',   max: 60 },
+    { id: 'nat',   label: '自然',   max: 60 },
+  ];
+
+  const SAT_SUBJECTS = [
+    { id: 'his',   label: '歷史',   max: 60 },
+    { id: 'geo',   label: '地理',   max: 60 },
+    { id: 'civ',   label: '公民',   max: 60 },
+    { id: 'mathC', label: '數甲',   max: 60 },
+    { id: 'mathD', label: '數乙',   max: 60 },
+    { id: 'phy',   label: '物理',   max: 60 },
+    { id: 'chem',  label: '化學',   max: 60 },
+    { id: 'bio',   label: '生物',   max: 60 },
+    { id: 'art',   label: '術科',   max: 100 },
+  ];
+
+  function renderRows(subjects, tbodyId) {
+    const tbody = document.getElementById(tbodyId);
+    subjects.forEach(s => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="col-label">${s.label}</td>
+        <td class="col-score">
+          <input type="number" id="score-${s.id}" min="1" max="${s.max}" placeholder="—" />
+        </td>
+        <td class="col-weight">
+          <input type="number" id="weight-${s.id}" min="0" step="0.25" placeholder="—" class="weight-input" />
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  renderRows(GSAT_SUBJECTS, 'gsat-body');
+  renderRows(SAT_SUBJECTS,  'sat-body');
+
+  const ALL_SUBJECTS = [...GSAT_SUBJECTS, ...SAT_SUBJECTS];
+
+  function calculate() {
+    document.getElementById('est-err').style.display = 'none';
+    document.getElementById('score-err').style.display = 'none';
+
+    const avgEst = parseFloat(document.getElementById('avg-est').value);
+    if (isNaN(avgEst) || avgEst <= 0) {
+      document.getElementById('est-err').style.display = 'block';
+      return;
+    }
+
+    const filled = [];
+    let hasError = false;
+
+    for (const s of ALL_SUBJECTS) {
+      const scoreRaw  = document.getElementById('score-'  + s.id).value.trim();
+      const weightRaw = document.getElementById('weight-' + s.id).value.trim();
+
+      // 兩欄都空白 → 不採計，跳過
+      if (scoreRaw === '' && weightRaw === '') continue;
+
+      // 其中一欄有填、另一欄沒填 → 錯誤
+      if (scoreRaw === '' || weightRaw === '') { hasError = true; break; }
+
+      const score  = parseFloat(scoreRaw);
+      const weight = parseFloat(weightRaw);
+
+      if (isNaN(score)  || score  < 1 || score  > s.max) { hasError = true; break; }
+      if (isNaN(weight) || weight <= 0)                   { hasError = true; break; }
+
+      filled.push({ label: s.label, score, weight });
+    }
+
+    if (hasError || filled.length === 0) {
+      document.getElementById('score-err').style.display = 'block';
+      return;
+    }
+
+    // 加權單科平均 = Σ(score × weight) / Σweight
+    const weightedSum  = filled.reduce((a, b) => a + b.score * b.weight, 0);
+    const totalWeight  = filled.reduce((a, b) => a + b.weight, 0);
+    const myAvg        = weightedSum / totalWeight;
+    const risk         = (myAvg - avgEst) / avgEst * 100;
+
+    let prob;
+    if      (risk >= 10)  prob = 99;
+    else if (risk >= 3)   prob = (risk - 3)   / (10 - 3)   * (99 - 81) + 81;
+    else if (risk >= -1)  prob = (risk - (-1)) / (3 - (-1)) * (76 - 63) + 63;
+    else if (risk >= -6)  prob = (risk - (-6)) / (-1 - (-6))* (56 - 31) + 31;
+    else if (risk >= -10) prob = (risk -(-10)) / (-6 -(-10))* (29 - 1)  + 1;
+    else                  prob = 1;
+
+    let categoryLabel, tagClass;
+    if      (risk >= 3)  { categoryLabel = '安全保底'; tagClass = 'tag-safe'; }
+    else if (risk >= -1) { categoryLabel = '標準落點'; tagClass = 'tag-standard'; }
+    else if (risk >= -6) { categoryLabel = '有點挑戰'; tagClass = 'tag-challenge'; }
+    else                 { categoryLabel = '超級夢幻'; tagClass = 'tag-dream'; }
+
+    document.getElementById('count-val').textContent = filled.length + ' 科';
+    document.getElementById('my-avg').textContent    = myAvg.toFixed(2);
+    document.getElementById('risk-val').textContent  = risk.toFixed(2) + '%';
+    document.getElementById('prob-val').textContent  = prob.toFixed(2) + '%';
+
+    const tag = document.getElementById('category-tag');
+    tag.textContent = categoryLabel;
+    tag.className   = 'tag ' + tagClass;
+
+    const subjectList = filled.map(s => `${s.label} ${s.score}（×${s.weight}）`).join('、');
+    const formulaSteps = filled.map(s => `${s.score}×${s.weight}`).join(' + ');
+
+    document.getElementById('formula-detail').innerHTML =
+      `採計科目：${subjectList}<br>` +
+      `加權總分 = ${formulaSteps} = ${weightedSum.toFixed(2)}<br>` +
+      `加權總權重 = ${totalWeight}<br>` +
+      `加權單科平均 = ${weightedSum.toFixed(2)} ÷ ${totalWeight} = ${myAvg.toFixed(2)}<br>` +
+      `風險值 = (${myAvg.toFixed(2)} − ${avgEst}) ÷ ${avgEst} = ${risk.toFixed(2)}%<br>` +
+      `錄取機率（內插法）= ${prob.toFixed(2)}%`;
+
+    const resultArea = document.getElementById('result-area');
+    resultArea.style.display = 'block';
+    resultArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+</script>
+</body>
+</html>
